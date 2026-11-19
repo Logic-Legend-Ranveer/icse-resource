@@ -54,4 +54,4 @@ PE= "Physical Education"
 Physical= PE
 environmental= ENA, "89,EVA
 environ= ENA, "89",EVA
-EVA = ENA, "89","Environmental Applications"
+EVA = ENA, "89",Environmental
