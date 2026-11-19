@@ -1,4 +1,4 @@
-export type TabId = "syllabus" | "study" | "quizzes" | "sample-papers" | "about" | "pyq-prelims" | "book-solutions";
+export type TabId = "syllabus" | "study" | "quizzes" | "official-cisce-resources" | "about" | "pyq-prelims" | "book-solutions";
 
 /** All tabs that resolve to a browsable FileItem tree (i.e. everything but About). */
 export type TreeTabId = Exclude<TabId, "about">;
@@ -13,7 +13,7 @@ export const TAB_DEFS: TabDef[] = [
   { id: "study", label: "Study Assets" },
   { id: "quizzes", label: "Interactive Quizzes" },
   { id: "pyq-prelims", label: "PYQ Prelims"},
-  { id: "sample-papers", label: "CISCE Sample Papers & PYQs" },
+  { id: "official-cisce-resources", label: "Official CISCE Resources" },
   { id: "book-solutions", label: "Book Solutions" },
   { id: "about", label: "About" }
 ];
@@ -33,6 +33,6 @@ export const TAB_SOURCE_FOLDER_NAME: Record<Exclude<TreeTabId, "quizzes">, strin
   syllabus: "ICSE 2027 Syllabus",
   study: "Study Assets",
   "pyq-prelims": "PYQ Prelims",
-  "sample-papers": "Sample Papers & PYQs from CICSE",
+  "official-cisce-resources": "Official CISCE Resources",
   "book-solutions": "ICSE Book Solutions"
 };
