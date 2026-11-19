@@ -6,6 +6,7 @@ import {
   Calculator,
   Code2,
   Dna,
+  Dumbbell,
   FlaskConical,
   Globe2,
   Landmark,
@@ -31,8 +32,10 @@ const SUBJECT_ORDER: string[] = [
   "commercial studies",
   "commercial applications",
   "computer applications",
+  "physical education",
   "other subjects",
   "other_subjects",
+  "other featured books and notes",
 ];
 
 const CARD_ICONS: Record<string, LucideIcon> = {
@@ -50,38 +53,42 @@ const CARD_ICONS: Record<string, LucideIcon> = {
   "commercial studies": Briefcase,
   "commercial applications": Briefcase,
   "computer applications": Code2,
+  "physical education": Dumbbell,
   "other subjects": BookOpen,
   other_subjects: BookOpen,
+  "other featured books and notes": BookOpen,
 };
 
-const DEFAULT_BADGE = "bg-amber-500/12 text-amber-400 ring-amber-400/25";
+const DEFAULT_BADGE = "bg-amber-500/15 text-amber-400 ring-amber-400/30";
 
 const ICON_BADGES: Record<string, string> = {
-  // STEM — crisp cool jewel tones
+  // STEM
   physics: "bg-indigo-500/15 text-indigo-400 ring-indigo-400/30",
   chemistry: "bg-emerald-500/15 text-emerald-400 ring-emerald-400/30",
   biology: "bg-teal-500/15 text-teal-400 ring-teal-400/30",
   mathematics: "bg-violet-500/15 text-violet-400 ring-violet-400/30",
 
-  // Languages — clean blues + warm coral for Hindi
+  // Languages
   english: "bg-sky-500/15 text-sky-400 ring-sky-400/30",
   "english language": "bg-cyan-500/15 text-cyan-400 ring-cyan-400/30",
   "english literature": "bg-blue-500/15 text-blue-400 ring-blue-400/30",
   hindi: "bg-rose-500/15 text-rose-400 ring-rose-400/30",
 
-  // Humanities — warm amber/gold accents
+  // Humanities
   "history & civics": "bg-amber-500/15 text-amber-400 ring-amber-400/30",
   geography: "bg-orange-500/15 text-orange-400 ring-orange-400/30",
   economics: "bg-yellow-500/15 text-yellow-300 ring-yellow-400/30",
 
-  // Commerce & Tech — rich violet/fuchsia/cyan
+  // Commerce, Tech & PE
   "commercial studies": "bg-purple-500/15 text-purple-400 ring-purple-400/30",
   "commercial applications": "bg-fuchsia-500/15 text-fuchsia-400 ring-fuchsia-400/30",
   "computer applications": "bg-cyan-500/15 text-cyan-300 ring-cyan-400/30",
+  "physical education": "bg-lime-500/15 text-lime-400 ring-lime-400/30",
 
   // Other
-  "other subjects": "bg-slate-500/15 text-slate-400 ring-slate-400/25",
-  other_subjects: "bg-slate-500/15 text-slate-400 ring-slate-400/25",
+  "other subjects": "bg-slate-500/15 text-slate-300 ring-slate-400/25",
+  other_subjects: "bg-slate-500/15 text-slate-300 ring-slate-400/25",
+  "other featured books and notes": "bg-amber-500/15 text-amber-400 ring-amber-400/30",
 };
 
 function normalizeKey(name: string): string {
@@ -120,7 +127,7 @@ export default function ContentsBar({ items, activeId, onSelect, variant }: Cont
 
   if (variant === "sidebar") {
     return (
-      <aside className="fixed bottom-0 left-0 top-[108px] z-40 hidden w-73 flex-col gap-1.5 overflow-y-auto border-r border-border midnight/60 backdrop-blur-md p-3 md:flex">
+      <aside className="fixed bottom-0 left-0 top-[108px] z-40 hidden w-73 flex-col gap-2 overflow-y-auto border-r border-border midnight/60 backdrop-blur-md p-3 md:flex">
         {orderedItems.map((item) => (
           <CardButton
             key={item.id}
@@ -167,18 +174,18 @@ function CardButton({
     <button
       type="button"
       onClick={onClick}
-      className={`group flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-medium transition-all cursor-pointer ${
+      className={`group flex shrink-0 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-medium transition-all duration-200 cursor-pointer ${
         orientation === "horizontal" ? "min-w-[10rem]" : "w-full"
       } ${
         isActive
-          ? "border-accent-indigo/50 bg-accent-indigo/15 text-white shadow-[0_0_20px_-6px_rgba(99,102,241,0.45)]"
-          : "border-border bg-surface/85 text-slate-300 hover:border-border-strong hover:bg-surface-hover hover:text-white"
+          ? "border-accent-violet bg-gradient-to-r from-accent-indigo/20 to-accent-violet/20 text-white shadow-[0_0_22px_-4px_rgba(139,92,246,0.55)]"
+          : "border-accent-violet/35 bg-surface/85 text-slate-200 shadow-[inset_0_1px_0_0_rgba(139,92,246,0.12)] hover:border-accent-violet/75 hover:bg-surface-hover hover:text-white hover:shadow-[0_0_18px_-5px_rgba(139,92,246,0.45)]"
       }`}
     >
       <span
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors ${
           isActive
-            ? "bg-accent-indigo/25 text-accent-indigo-soft ring-accent-indigo/40"
+            ? "bg-accent-violet/25 text-accent-violet-soft ring-accent-violet/50"
             : badgeClass
         }`}
       >
