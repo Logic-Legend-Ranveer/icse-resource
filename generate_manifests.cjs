@@ -10,7 +10,7 @@ const QUIZZES_FOLDER_NAME = 'quizzes';
 const TARGET_FOLDERS = [
   'Study Assets',
   'ICSE 2027 Syllabus',
-  'Sample Papers & PYQs from CICSE',
+  'Official CISCE Resources',
   'ICSE Book Solutions'
 ];
 
