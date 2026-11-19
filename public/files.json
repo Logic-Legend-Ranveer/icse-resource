@@ -4795,7 +4795,7 @@
             "name": "Practice Tests",
             "type": "folder",
             "fileId": "",
-            "size": 2705978,
+            "size": 29242296,
             "children": [
               {
                 "name": "FullPaper01_Complete_Syllabus.pdf",
@@ -4817,6 +4817,161 @@
                 "fileId": "1YCC9fG4gilMGY68DDfTUVMvdvhkIDOk0",
                 "size": 391149,
                 "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Sample Papers",
+                "type": "folder",
+                "fileId": "",
+                "size": 26536318,
+                "children": [
+                  {
+                    "name": "Physics - Model Test Paper - 1.pdf",
+                    "type": "file",
+                    "fileId": "15CBumjBk7ZoBmwpFPkYYJJfoty4tOH_l",
+                    "size": 6050573,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Model Test Paper - 2.pdf",
+                    "type": "file",
+                    "fileId": "1xSuBXjBeuiBWFdaVOESKF_dmZAbPGlBZ",
+                    "size": 6448516,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 01.pdf",
+                    "type": "file",
+                    "fileId": "1w2CnNjyJZfah4IXn_E0U-TkB67Gl1qsN",
+                    "size": 720288,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 02.pdf",
+                    "type": "file",
+                    "fileId": "1x6YFWTUyL3LG8RIwvKvGk3gY_ngSEnb1",
+                    "size": 723845,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 03.pdf",
+                    "type": "file",
+                    "fileId": "1KzMBrf6ZHnwYBpg16urP0LQHjnRq8d49",
+                    "size": 796628,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 04.pdf",
+                    "type": "file",
+                    "fileId": "1Jkdnz2bk8HwBofoVdHcNxJvbAwkYlbZO",
+                    "size": 725965,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 05.pdf",
+                    "type": "file",
+                    "fileId": "14M7ARfiZR6hVOizw3B0dnszstrQ7Ea_X",
+                    "size": 683907,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 06.pdf",
+                    "type": "file",
+                    "fileId": "1xsWTbbC-wOWdUaTAbLXYHZvLN14KTaKp",
+                    "size": 728134,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 07.pdf",
+                    "type": "file",
+                    "fileId": "1SGQ2S2lesLLtJqHK7syjPxt1zAT_T-uB",
+                    "size": 657045,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 08.pdf",
+                    "type": "file",
+                    "fileId": "1NQep0PJDHfSania0O9t9oW2GVxY06H4g",
+                    "size": 670908,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 10.pdf",
+                    "type": "file",
+                    "fileId": "1ilghvlRaUi2inekodmf5DQD0A4pl3My8",
+                    "size": 705912,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 11.pdf",
+                    "type": "file",
+                    "fileId": "1NcmHFDzLMdYylYCeCbxp05iNAQUd2o8p",
+                    "size": 753239,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 12.pdf",
+                    "type": "file",
+                    "fileId": "1XcYFJGpkOeNmW7nV1Mp-IrQMXU8RdE4N",
+                    "size": 767293,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 13.pdf",
+                    "type": "file",
+                    "fileId": "1Zk5IL9kKiC-8PMqZ75tfpZj89Nb4S5_r",
+                    "size": 634144,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 14.pdf",
+                    "type": "file",
+                    "fileId": "13RcgVu7kuLzzDyX3lfCG2k6pxHD8QMrD",
+                    "size": 854914,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 15.pdf",
+                    "type": "file",
+                    "fileId": "1qVMn6E8agbq6jjwFhn3mU1Kb7oDHOtKM",
+                    "size": 913538,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 16.pdf",
+                    "type": "file",
+                    "fileId": "1aiIWzzyFG4xyleNfcdP7Q3xsU3I1e48i",
+                    "size": 756588,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 17.pdf",
+                    "type": "file",
+                    "fileId": "1CEy-YfQQLuLtraRXrMWIQ1uCVRdmNz9a",
+                    "size": 745868,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 18.pdf",
+                    "type": "file",
+                    "fileId": "1YVE6nwOWubFx52plTkm8Tpy6EdK8isry",
+                    "size": 715948,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 19.pdf",
+                    "type": "file",
+                    "fileId": "1gNbPfM0ZvqbULJJWZAXutdJvdXJAl0ca",
+                    "size": 742195,
+                    "addedAt": "2026-09-23"
+                  },
+                  {
+                    "name": "Physics - Sample Paper - 20.pdf",
+                    "type": "file",
+                    "fileId": "1aMZ3TthMBY7HOIEznPyqoH5a_rV2S0Yy",
+                    "size": 740870,
+                    "addedAt": "2026-09-23"
+                  }
+                ]
               },
               {
                 "name": "Test01_Unit_Force_WPE_Machines.pdf",
@@ -4964,161 +5119,6 @@
                 "type": "file",
                 "fileId": "1SdefKo7rVEQduQObGC-K3XuzKhi8kMR7",
                 "size": 31735533,
-                "addedAt": "2026-09-23"
-              }
-            ]
-          },
-          {
-            "name": "Sample Papers",
-            "type": "folder",
-            "fileId": "",
-            "size": 26536318,
-            "children": [
-              {
-                "name": "Physics - Model Test Paper - 1.pdf",
-                "type": "file",
-                "fileId": "15CBumjBk7ZoBmwpFPkYYJJfoty4tOH_l",
-                "size": 6050573,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Model Test Paper - 2.pdf",
-                "type": "file",
-                "fileId": "1xSuBXjBeuiBWFdaVOESKF_dmZAbPGlBZ",
-                "size": 6448516,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 01.pdf",
-                "type": "file",
-                "fileId": "1w2CnNjyJZfah4IXn_E0U-TkB67Gl1qsN",
-                "size": 720288,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 02.pdf",
-                "type": "file",
-                "fileId": "1x6YFWTUyL3LG8RIwvKvGk3gY_ngSEnb1",
-                "size": 723845,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 03.pdf",
-                "type": "file",
-                "fileId": "1KzMBrf6ZHnwYBpg16urP0LQHjnRq8d49",
-                "size": 796628,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 04.pdf",
-                "type": "file",
-                "fileId": "1Jkdnz2bk8HwBofoVdHcNxJvbAwkYlbZO",
-                "size": 725965,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 05.pdf",
-                "type": "file",
-                "fileId": "14M7ARfiZR6hVOizw3B0dnszstrQ7Ea_X",
-                "size": 683907,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 06.pdf",
-                "type": "file",
-                "fileId": "1xsWTbbC-wOWdUaTAbLXYHZvLN14KTaKp",
-                "size": 728134,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 07.pdf",
-                "type": "file",
-                "fileId": "1SGQ2S2lesLLtJqHK7syjPxt1zAT_T-uB",
-                "size": 657045,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 08.pdf",
-                "type": "file",
-                "fileId": "1NQep0PJDHfSania0O9t9oW2GVxY06H4g",
-                "size": 670908,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 10.pdf",
-                "type": "file",
-                "fileId": "1ilghvlRaUi2inekodmf5DQD0A4pl3My8",
-                "size": 705912,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 11.pdf",
-                "type": "file",
-                "fileId": "1NcmHFDzLMdYylYCeCbxp05iNAQUd2o8p",
-                "size": 753239,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 12.pdf",
-                "type": "file",
-                "fileId": "1XcYFJGpkOeNmW7nV1Mp-IrQMXU8RdE4N",
-                "size": 767293,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 13.pdf",
-                "type": "file",
-                "fileId": "1Zk5IL9kKiC-8PMqZ75tfpZj89Nb4S5_r",
-                "size": 634144,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 14.pdf",
-                "type": "file",
-                "fileId": "13RcgVu7kuLzzDyX3lfCG2k6pxHD8QMrD",
-                "size": 854914,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 15.pdf",
-                "type": "file",
-                "fileId": "1qVMn6E8agbq6jjwFhn3mU1Kb7oDHOtKM",
-                "size": 913538,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 16.pdf",
-                "type": "file",
-                "fileId": "1aiIWzzyFG4xyleNfcdP7Q3xsU3I1e48i",
-                "size": 756588,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 17.pdf",
-                "type": "file",
-                "fileId": "1CEy-YfQQLuLtraRXrMWIQ1uCVRdmNz9a",
-                "size": 745868,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 18.pdf",
-                "type": "file",
-                "fileId": "1YVE6nwOWubFx52plTkm8Tpy6EdK8isry",
-                "size": 715948,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 19.pdf",
-                "type": "file",
-                "fileId": "1gNbPfM0ZvqbULJJWZAXutdJvdXJAl0ca",
-                "size": 742195,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Physics - Sample Paper - 20.pdf",
-                "type": "file",
-                "fileId": "1aMZ3TthMBY7HOIEznPyqoH5a_rV2S0Yy",
-                "size": 740870,
                 "addedAt": "2026-09-23"
               }
             ]
