@@ -25,7 +25,7 @@ import RecentAdditionsModal from "./components/modals/RecentAdditionsModal";
 import ConstellationBackground from './components/layout/ConstellationBackground';
 
 const DEFAULT_TAB_ID: TabId = "syllabus";
-const EMPTY_TREES: Record<TreeTabId, FileItem[]> = { syllabus: [], study: [], quizzes: [], "pyq-prelims": [], "sample-papers": [], "book-solutions": [] };
+const EMPTY_TREES: Record<TreeTabId, FileItem[]> = { syllabus: [], study: [], quizzes: [], "pyq-prelims": [], "official-cisce-resources": [], "book-solutions": [] };
 
 type DataStatus = "loading" | "ready" | "error";
 
@@ -53,7 +53,7 @@ function AppShell() {
           syllabus: findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME.syllabus),
           study: findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME.study),
           "pyq-prelims": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["pyq-prelims"]),
-          "sample-papers": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["sample-papers"]),
+          "official-cisce-resources": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["official-cisce-resources"]),
           "book-solutions": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["book-solutions"]),
           quizzes: buildQuizTree(rawQuizzes),
         });
