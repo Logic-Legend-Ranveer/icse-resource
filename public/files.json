@@ -3,7 +3,7 @@
     "name": "Study Assets",
     "type": "folder",
     "fileId": "",
-    "size": 6229301923,
+    "size": 6232007901,
     "children": [
       {
         "name": "Biology",
@@ -4675,7 +4675,7 @@
         "name": "Physics",
         "type": "folder",
         "fileId": "",
-        "size": 727378897,
+        "size": 730084875,
         "children": [
           {
             "name": "Chapterwise PYQs",
@@ -4788,6 +4788,70 @@
                 "fileId": "1K3o9XnIWFwcyezSsiaCHLxm64t-3PvVn",
                 "size": 27650942,
                 "addedAt": "2026-09-23"
+              }
+            ]
+          },
+          {
+            "name": "Practice Tests",
+            "type": "folder",
+            "fileId": "",
+            "size": 2705978,
+            "children": [
+              {
+                "name": "FullPaper01_Complete_Syllabus.pdf",
+                "type": "file",
+                "fileId": "1vbhgGl_70iShQtd7XWupT0qzdrubVOPo",
+                "size": 412031,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "FullPaper02_Complete_Syllabus.pdf",
+                "type": "file",
+                "fileId": "1djQJhE4BWuiW6KFsYXtq1g-za--strfc",
+                "size": 437358,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "FullPaper03_Preboard_Launch_Rehearsal.pdf",
+                "type": "file",
+                "fileId": "1YCC9fG4gilMGY68DDfTUVMvdvhkIDOk0",
+                "size": 391149,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Test01_Unit_Force_WPE_Machines.pdf",
+                "type": "file",
+                "fileId": "15JAV-_EwSOuQb9rVNAcFqeSklXBz-TJV",
+                "size": 297494,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Test02_Unit_Optics_Spectrum_Sound 2.pdf",
+                "type": "file",
+                "fileId": "1OSoHafMwd0LAE4RybAgTk4HHtYehTb9i",
+                "size": 299582,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Test03_Unit_Electricity_Heat_Radioactivity.pdf",
+                "type": "file",
+                "fileId": "1yaqZBMdxdubQmcuPQTUblqj55ATjsP1m",
+                "size": 287561,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Test04_Cumulative_Force_to_Sound.pdf",
+                "type": "file",
+                "fileId": "1PPYxlRTqv8nrLEu1NuSwtQr1gFOr9_An",
+                "size": 296035,
+                "addedAt": "2026-11-19"
+              },
+              {
+                "name": "Test05_Cumulative_Electricity_to_Radioactivity.pdf",
+                "type": "file",
+                "fileId": "1hQNWybLw8NpyXpo7cCaqYU-T2-ZTOtZX",
+                "size": 284768,
+                "addedAt": "2026-11-19"
               }
             ]
           },
@@ -5187,7 +5251,7 @@
     "name": "Official CISCE Resources",
     "type": "folder",
     "fileId": "",
-    "size": 202632775,
+    "size": 222758762,
     "children": [
       {
         "name": "ICSE PYQ(Official)",
@@ -8671,11 +8735,19 @@
         ]
       },
       {
-        "name": "Misclenn",
+        "name": "Miscellaneous",
         "type": "folder",
         "fileId": "",
-        "size": 0,
-        "children": []
+        "size": 20125987,
+        "children": [
+          {
+            "name": "ICSE Analysis of Pupil performance.pdf",
+            "type": "file",
+            "fileId": "1BKvznUOGHH9kj_nV3QQXVmEBxRz6G0-O",
+            "size": 20125987,
+            "addedAt": "2026-11-19"
+          }
+        ]
       }
     ]
   },
