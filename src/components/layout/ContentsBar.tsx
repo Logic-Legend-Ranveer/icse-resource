@@ -59,36 +59,36 @@ const CARD_ICONS: Record<string, LucideIcon> = {
   "other featured books and notes": BookOpen,
 };
 
-const DEFAULT_BADGE = "bg-amber-500/15 text-amber-400 ring-amber-400/30";
+const DEFAULT_BADGE = "bg-amber-500/12 text-amber-400 ring-amber-400/25";
 
 const ICON_BADGES: Record<string, string> = {
   // STEM
-  physics: "bg-indigo-500/15 text-indigo-400 ring-indigo-400/30",
-  chemistry: "bg-emerald-500/15 text-emerald-400 ring-emerald-400/30",
-  biology: "bg-teal-500/15 text-teal-400 ring-teal-400/30",
-  mathematics: "bg-violet-500/15 text-violet-400 ring-violet-400/30",
+  physics: "bg-indigo-500/12 text-indigo-400 ring-indigo-400/25",
+  chemistry: "bg-emerald-500/12 text-emerald-400 ring-emerald-400/25",
+  biology: "bg-teal-500/12 text-teal-400 ring-teal-400/25",
+  mathematics: "bg-violet-500/12 text-violet-400 ring-violet-400/25",
 
   // Languages
-  english: "bg-sky-500/15 text-sky-400 ring-sky-400/30",
-  "english language": "bg-cyan-500/15 text-cyan-400 ring-cyan-400/30",
-  "english literature": "bg-blue-500/15 text-blue-400 ring-blue-400/30",
-  hindi: "bg-rose-500/15 text-rose-400 ring-rose-400/30",
+  english: "bg-sky-500/12 text-sky-400 ring-sky-400/25",
+  "english language": "bg-cyan-500/12 text-cyan-400 ring-cyan-400/25",
+  "english literature": "bg-blue-500/12 text-blue-400 ring-blue-400/25",
+  hindi: "bg-rose-500/12 text-rose-400 ring-rose-400/25",
 
   // Humanities
-  "history & civics": "bg-amber-500/15 text-amber-400 ring-amber-400/30",
-  geography: "bg-orange-500/15 text-orange-400 ring-orange-400/30",
-  economics: "bg-yellow-500/15 text-yellow-300 ring-yellow-400/30",
+  "history & civics": "bg-amber-500/12 text-amber-400 ring-amber-400/25",
+  geography: "bg-orange-500/12 text-orange-400 ring-orange-400/25",
+  economics: "bg-yellow-500/12 text-yellow-300 ring-yellow-400/25",
 
   // Commerce, Tech & PE
-  "commercial studies": "bg-purple-500/15 text-purple-400 ring-purple-400/30",
-  "commercial applications": "bg-fuchsia-500/15 text-fuchsia-400 ring-fuchsia-400/30",
-  "computer applications": "bg-cyan-500/15 text-cyan-300 ring-cyan-400/30",
-  "physical education": "bg-lime-500/15 text-lime-400 ring-lime-400/30",
+  "commercial studies": "bg-purple-500/12 text-purple-400 ring-purple-400/25",
+  "commercial applications": "bg-fuchsia-500/12 text-fuchsia-400 ring-fuchsia-400/25",
+  "computer applications": "bg-cyan-500/12 text-cyan-300 ring-cyan-400/25",
+  "physical education": "bg-lime-500/12 text-lime-400 ring-lime-400/25",
 
   // Other
-  "other subjects": "bg-slate-500/15 text-slate-300 ring-slate-400/25",
-  other_subjects: "bg-slate-500/15 text-slate-300 ring-slate-400/25",
-  "other featured books and notes": "bg-amber-500/15 text-amber-400 ring-amber-400/30",
+  "other subjects": "bg-slate-500/12 text-slate-300 ring-slate-400/20",
+  other_subjects: "bg-slate-500/12 text-slate-300 ring-slate-400/20",
+  "other featured books and notes": "bg-amber-500/12 text-amber-400 ring-amber-400/25",
 };
 
 function normalizeKey(name: string): string {
@@ -178,14 +178,14 @@ function CardButton({
         orientation === "horizontal" ? "min-w-[10rem]" : "w-full"
       } ${
         isActive
-          ? "border-accent-violet bg-gradient-to-r from-accent-indigo/20 to-accent-violet/20 text-white shadow-[0_0_22px_-4px_rgba(139,92,246,0.55)]"
-          : "border-accent-violet/35 bg-surface/85 text-slate-200 shadow-[inset_0_1px_0_0_rgba(139,92,246,0.12)] hover:border-accent-violet/75 hover:bg-surface-hover hover:text-white hover:shadow-[0_0_18px_-5px_rgba(139,92,246,0.45)]"
+          ? "border-[#4D4787] bg-gradient-to-b from-[#1B1F3A] to-[#111528] text-white shadow-[inset_0_1px_0_0_rgba(196,193,255,0.28),inset_0_-1px_0_0_rgba(4,6,16,0.75)]"
+          : "border-[#252342] bg-gradient-to-b from-[#121627]/90 to-[#0B0E18]/90 text-slate-300 shadow-[inset_0_1px_0_0_rgba(165,163,235,0.09),inset_0_-1px_0_0_rgba(2,4,10,0.65)] hover:border-[#383463] hover:from-[#161B30] hover:to-[#0E1220] hover:text-slate-100 hover:shadow-[inset_0_1px_0_0_rgba(185,182,252,0.16),inset_0_-1px_0_0_rgba(2,4,10,0.7)]"
       }`}
     >
       <span
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors ${
           isActive
-            ? "bg-accent-violet/25 text-accent-violet-soft ring-accent-violet/50"
+            ? "bg-indigo-500/20 text-indigo-300 ring-indigo-300/35"
             : badgeClass
         }`}
       >
