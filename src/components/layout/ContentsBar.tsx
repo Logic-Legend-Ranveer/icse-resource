@@ -178,14 +178,14 @@ function CardButton({
         orientation === "horizontal" ? "min-w-[10rem]" : "w-full"
       } ${
         isActive
-          ? "border-accent-violet bg-accent-violet/15 text-white"
-          : "border-accent-violet/55 bg-surface text-slate-300 hover:border-accent-violet hover:bg-surface-hover hover:text-white"
+          ? "border-accent-violet/50 bg-accent-violet/12 text-white"
+          : "border-accent-violet/20 bg-surface text-slate-300 hover:border-accent-violet/35 hover:bg-surface-hover hover:text-white"
       }`}
     >
       <span
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors ${
           isActive
-            ? "bg-accent-violet/25 text-accent-violet-soft ring-accent-violet/45"
+            ? "bg-accent-violet/20 text-accent-violet-soft ring-accent-violet/35"
             : badgeClass
         }`}
       >
