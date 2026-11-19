@@ -12,7 +12,7 @@ export const TAB_DEFS: TabDef[] = [
   { id: "syllabus", label: "ICSE 2027 Syllabus" },
   { id: "study", label: "Study Assets" },
   { id: "quizzes", label: "Interactive Quizzes" },
-  { id: "pyq-prelims", label: "PYQ Prelims"},
+  { id: "pyq-prelims", label: "Previous Year Pre-Board Papers"},
   { id: "official-cisce-resources", label: "Official CISCE Resources" },
   { id: "book-solutions", label: "Book Solutions" },
   { id: "about", label: "About" }
