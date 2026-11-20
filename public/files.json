@@ -5251,7 +5251,7 @@
     "name": "Official CISCE Resources",
     "type": "folder",
     "fileId": "",
-    "size": 222758762,
+    "size": 224655813,
     "children": [
       {
         "name": "ICSE PYQ(Official)",
@@ -8738,8 +8738,15 @@
         "name": "Miscellaneous",
         "type": "folder",
         "fileId": "",
-        "size": 20125987,
+        "size": 22023038,
         "children": [
+          {
+            "name": "1.-ICSE-Year-2027-Examination-Timetable-and-Instructions-to-Candidates.pdf",
+            "type": "file",
+            "fileId": "1hHsK0WEPDO0R3-5wWSFLpT2FRiFWbWsA",
+            "size": 1897051,
+            "addedAt": "2026-11-19"
+          },
           {
             "name": "ICSE Analysis of Pupil performance.pdf",
             "type": "file",
