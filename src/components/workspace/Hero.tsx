@@ -21,7 +21,7 @@ export default function Hero({ resourceCount }: HeroProps) {
       <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-slate-400">
         <Files className="h-3.5 w-3.5 text-accent-indigo-soft" />
         <span className="font-semibold text-slate-200">{resourceCount.toLocaleString()}</span>
-        resources available
+        files available
       </div>
     </section>
   );
