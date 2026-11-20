@@ -1,14 +1,16 @@
-import { CircleHelp, FileText, Folder, Image as ImageIcon } from "lucide-react";
+import { FileText, Folder, Image as ImageIcon } from "lucide-react";
 import { getFileBadge, isImageFile, stripFileExtension } from "../../lib/fileTree";
 import type { SearchEntry } from "../../lib/search";
+import QuizIcon from "../icons/QuizIcon";
 
 interface SearchResultsViewProps {
   query: string;
   results: SearchEntry[];
   onSelect: (entry: SearchEntry) => void;
+  isQuizSearch?: boolean;
 }
 
-export default function SearchResultsView({ query, results, onSelect }: SearchResultsViewProps) {
+export default function SearchResultsView({ query, results, onSelect, isQuizSearch = false }: SearchResultsViewProps) {
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
@@ -24,7 +26,9 @@ export default function SearchResultsView({ query, results, onSelect }: SearchRe
 
       <div className="mt-3 overflow-hidden rounded-xl border border-border bg-surface">
         {results.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">No files or folders match this search.</p>
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            {isQuizSearch ? "No quizzes match this search." : "No files or folders match this search."}
+          </p>
         ) : (
           results.map((entry, index) => {
             const isFolder = entry.item.type === "folder";
@@ -34,7 +38,7 @@ export default function SearchResultsView({ query, results, onSelect }: SearchRe
             const Icon = isFolder
               ? Folder
               : badge?.kind === "quiz"
-                ? CircleHelp
+                ? QuizIcon
                 : isImageFile(entry.item.name)
                   ? ImageIcon
                   : FileText;
@@ -53,7 +57,7 @@ export default function SearchResultsView({ query, results, onSelect }: SearchRe
                     isFolder
                       ? "bg-accent-indigo/10 text-accent-indigo-soft"
                       : badge?.kind === "quiz"
-                        ? "bg-accent-violet/10 text-accent-violet-soft"
+                        ? "bg-accent-violet/15 text-accent-violet-soft ring-1 ring-inset ring-accent-violet/25"
                         : "bg-white/5 text-slate-400"
                   }`}
                 >

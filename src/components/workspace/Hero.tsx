@@ -7,6 +7,7 @@ interface HeroProps {
   onSearchQueryChange: (value: string) => void;
   resultCount?: number;
   inputRef?: RefObject<HTMLInputElement | null>;
+  isQuizTab?: boolean;
 }
 
 export default function Hero({
@@ -15,8 +16,12 @@ export default function Hero({
   onSearchQueryChange,
   resultCount,
   inputRef,
+  isQuizTab = false,
 }: HeroProps) {
   const hasQuery = searchQuery.trim().length > 0;
+  const placeholderText = isQuizTab
+    ? `Search ${resourceCount.toLocaleString()} quizzes…`
+    : `Search ${resourceCount.toLocaleString()} resources…`;
 
   return (
     <section className="mx-auto max-w-3xl pt-16 text-center md:pt-12">
@@ -49,8 +54,8 @@ export default function Hero({
                 onSearchQueryChange("");
               }
             }}
-            placeholder={`Search ${resourceCount.toLocaleString()} resources…`}
-            aria-label={`Search ${resourceCount.toLocaleString()} resources`}
+            placeholder={placeholderText}
+            aria-label={placeholderText}
             className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none sm:text-base"
           />
 
@@ -76,15 +81,27 @@ export default function Hero({
 
         <p className="mt-2.5 text-xs text-slate-500">
           {hasQuery && typeof resultCount === "number" ? (
-            <>
-              Showing{" "}
-              <span className="font-medium text-slate-300">
-                {resultCount >= 100 ? "100+" : resultCount.toLocaleString()}
-              </span>{" "}
-              matching {resultCount === 1 ? "resource" : "resources"} across all tabs
-            </>
+            isQuizTab ? (
+              <>
+                Showing{" "}
+                <span className="font-medium text-slate-300">
+                  {resultCount >= 100 ? "100+" : resultCount.toLocaleString()}
+                </span>{" "}
+                matching {resultCount === 1 ? "quiz" : "quizzes"}
+              </>
+            ) : (
+              <>
+                Showing{" "}
+                <span className="font-medium text-slate-300">
+                  {resultCount >= 100 ? "100+" : resultCount.toLocaleString()}
+                </span>{" "}
+                matching {resultCount === 1 ? "resource" : "resources"} across all tabs
+              </>
+            )
+          ) : isQuizTab ? (
+            "Search interactive chapter quizzes across all subjects"
           ) : (
-            "Search across syllabi, study notes, prelims, specimen papers, book solutions & quizzes"
+            "Search across syllabi, study notes, prelims, specimen papers & book solutions"
           )}
         </p>
       </div>

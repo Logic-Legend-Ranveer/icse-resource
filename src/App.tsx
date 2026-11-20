@@ -7,7 +7,7 @@ import { TAB_SOURCE_FOLDER_NAME } from "./data/tabs";
 import type { FileItem } from "./types";
 import { fetchFilesJson, fetchQuizManifest, fetchSynonyms, fetchExceptions } from "./lib/api";
 import { buildQuizTree, countFiles, findFolderChildren, getRecentRawFiles, normalizeFileTree } from "./lib/fileTree";
-import { loadRecentHistory, pushRecentHistory, saveRecentHistory } from "./lib/recentHistory";
+import { loadRecentHistory, pushRecentHistory, pushRecentQuizBundle, saveRecentHistory } from "./lib/recentHistory";
 import type { RecentHistoryEntry } from "./lib/recentHistory";
 import { buildSearchIndex, buildTermGroups, matchesTermGroups } from "./lib/search";
 import type { SearchEntry } from "./lib/search";
@@ -118,6 +118,7 @@ function AppShell() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleFocusSearch]);
 
+  const isQuizTab = activeTabId === "quizzes";
   const searchIndex = useMemo(() => buildSearchIndex(contentTrees), [contentTrees]);
   const isSearching = searchQuery.trim().length > 0;
   const searchResults = useMemo<SearchEntry[]>(() => {
@@ -125,9 +126,10 @@ function AppShell() {
     const termGroups = buildTermGroups(searchQuery, synonyms);
     return searchIndex
       .filter((entry) => entry.item.type !== "folder")
+      .filter((entry) => (isQuizTab ? entry.tabId === "quizzes" : entry.tabId !== "quizzes"))
       .filter((entry) => matchesTermGroups(entry, termGroups, searchQuery, exceptions))
       .slice(0, 100);
-  }, [isSearching, searchQuery, synonyms, exceptions, searchIndex]);
+  }, [isSearching, isQuizTab, searchQuery, synonyms, exceptions, searchIndex]);
 
   function openAndTrackItem(item: FileItem, tabId: string, contextLabel: string) {
     setContinueHistory((prev) => pushRecentHistory(prev, item, tabId, contextLabel));
@@ -144,6 +146,14 @@ function AppShell() {
   }
 
   function handleOpenContinueEntry(entry: RecentHistoryEntry) {
+    if (entry.quizItems && entry.quizItems.length > 0) {
+      const subject = entry.item.subject || entry.quizItems[0]?.subject || "Quiz";
+      const contextLabel = entry.contextLabel ?? `${TAB_LABELS.quizzes} · ${subject}`;
+      setContinueHistory((prev) => pushRecentQuizBundle(prev, entry.quizItems!, subject, contextLabel));
+      openQuiz(entry.quizItems);
+      return;
+    }
+
     openAndTrackItem(
       entry.item,
       entry.tabId ?? (entry.item.subject ? "quizzes" : activeTabId),
@@ -196,10 +206,9 @@ function AppShell() {
   function handleAttemptSelectedQuizzes() {
     const selected = currentItems.filter((item) => item.type === "file" && selectedQuizIds.has(item.id));
     if (selected.length > 0) {
-      if (selected.length === 1) {
-        const contextParts = [TAB_LABELS.quizzes, ...explorerPath.slice(0, 2).map((p) => p.name)];
-        setContinueHistory((prev) => pushRecentHistory(prev, selected[0], "quizzes", contextParts.join(" · ")));
-      }
+      const subject = selected[0]?.subject || explorerPath[0]?.name || "Quiz";
+      const contextParts = [TAB_LABELS.quizzes, ...explorerPath.slice(0, 2).map((p) => p.name)];
+      setContinueHistory((prev) => pushRecentQuizBundle(prev, selected, subject, contextParts.join(" · ")));
       openQuiz(selected);
     }
   }
@@ -220,12 +229,15 @@ function AppShell() {
   const activeCardId = explorerPath[0]?.id ?? null;
   const currentItems = explorerPath.length === 0 ? tabRootItems : explorerPath[explorerPath.length - 1].children ?? [];
 
-  const totalResources = useMemo(() => {
-    return (Object.keys(contentTrees) as TreeTabId[]).reduce((total, tabId) => total + countFiles(contentTrees[tabId]), 0);
+  const nonQuizResourceCount = useMemo(() => {
+    return (Object.keys(contentTrees) as TreeTabId[])
+      .filter((tabId) => tabId !== "quizzes")
+      .reduce((total, tabId) => total + countFiles(contentTrees[tabId]), 0);
   }, [contentTrees]);
 
+  const quizCount = useMemo(() => countFiles(contentTrees.quizzes), [contentTrees]);
+
   const showAboutOnly = activeTabId === "about" && !isSearching;
-  const isQuizTab = activeTabId === "quizzes";
 
   return (
     <div className="relative isolate min-h-screen bg-midnight">
@@ -256,11 +268,12 @@ function AppShell() {
             ) : (
               <>
                 <Hero
-                  resourceCount={totalResources}
+                  resourceCount={isQuizTab ? quizCount : nonQuizResourceCount}
                   searchQuery={searchQuery}
                   onSearchQueryChange={setSearchQuery}
                   resultCount={isSearching ? searchResults.length : undefined}
                   inputRef={heroSearchRef}
+                  isQuizTab={isQuizTab}
                 />
                 <ContentsBar variant="inline" items={contentsBarItems} activeId={activeCardId} onSelect={handleSelectCard} />
 
@@ -274,7 +287,12 @@ function AppShell() {
                 )}
 
                 {isSearching ? (
-                  <SearchResultsView query={searchQuery} results={searchResults} onSelect={handleSelectSearchResult} />
+                  <SearchResultsView
+                    query={searchQuery}
+                    results={searchResults}
+                    onSelect={handleSelectSearchResult}
+                    isQuizSearch={isQuizTab}
+                  />
                 ) : (
                   <FileExplorer
                     rootItems={tabRootItems}

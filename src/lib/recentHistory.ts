@@ -5,9 +5,22 @@ const MAX_ITEMS = 4;
 
 export interface RecentHistoryEntry {
   item: FileItem;
+  quizItems?: FileItem[];
   tabId?: string;
   contextLabel?: string;
   openedAt: number;
+}
+
+function toSlimFileItem(item: FileItem): FileItem {
+  return {
+    id: item.id,
+    name: item.name,
+    type: "file",
+    driveId: item.driveId,
+    sizeLabel: item.sizeLabel,
+    updatedAt: item.updatedAt,
+    subject: item.subject,
+  };
 }
 
 export function loadRecentHistory(): RecentHistoryEntry[] {
@@ -16,10 +29,15 @@ export function loadRecentHistory(): RecentHistoryEntry[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is RecentHistoryEntry =>
-        Boolean(entry?.item?.id) && Boolean(entry?.item?.name) && typeof entry?.openedAt === "number",
-    );
+    return parsed.filter((entry): entry is RecentHistoryEntry => {
+      if (!entry?.item?.id || !entry?.item?.name || typeof entry?.openedAt !== "number") {
+        return false;
+      }
+      if (entry.quizItems !== undefined) {
+        if (!Array.isArray(entry.quizItems) || entry.quizItems.length === 0) return false;
+      }
+      return true;
+    });
   } catch {
     return [];
   }
@@ -41,15 +59,7 @@ export function pushRecentHistory(
 ): RecentHistoryEntry[] {
   if (item.type !== "file") return current;
 
-  const slimItem: FileItem = {
-    id: item.id,
-    name: item.name,
-    type: "file",
-    driveId: item.driveId,
-    sizeLabel: item.sizeLabel,
-    updatedAt: item.updatedAt,
-    subject: item.subject,
-  };
+  const slimItem = toSlimFileItem(item);
 
   const filtered = current.filter((entry) => {
     if (entry.item.id === slimItem.id) return false;
@@ -61,6 +71,52 @@ export function pushRecentHistory(
     {
       item: slimItem,
       tabId,
+      contextLabel,
+      openedAt: Date.now(),
+    },
+    ...filtered,
+  ].slice(0, MAX_ITEMS);
+
+  saveRecentHistory(next);
+  return next;
+}
+
+export function pushRecentQuizBundle(
+  current: RecentHistoryEntry[],
+  items: FileItem[],
+  subject: string,
+  contextLabel?: string,
+): RecentHistoryEntry[] {
+  const validFiles = items.filter((item) => item.type === "file");
+  if (validFiles.length === 0) return current;
+
+  if (validFiles.length === 1) {
+    return pushRecentHistory(current, validFiles[0], "quizzes", contextLabel);
+  }
+
+  const slimQuizItems = validFiles.map(toSlimFileItem);
+  const sortedKey = slimQuizItems
+    .map((q) => q.id)
+    .sort()
+    .join("+");
+  const bundleId = `quiz-bundle:${sortedKey}`;
+  const resolvedSubject = subject.trim() || validFiles[0].subject || "Quiz";
+
+  const bundleItem: FileItem = {
+    id: bundleId,
+    name: `${resolvedSubject} Quiz(${slimQuizItems.length} Chapters)`,
+    type: "file",
+    driveId: "",
+    subject: resolvedSubject,
+  };
+
+  const filtered = current.filter((entry) => entry.item.id !== bundleId);
+
+  const next: RecentHistoryEntry[] = [
+    {
+      item: bundleItem,
+      quizItems: slimQuizItems,
+      tabId: "quizzes",
       contextLabel,
       openedAt: Date.now(),
     },
