@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Menu, Search, Sparkles } from "lucide-react";
+import { Menu, Search, Sparkles, X } from "lucide-react";
 import { useUI } from "../../context/UIContext";
 import { TAB_DEFS } from "../../data/tabs";
 import type { TabId } from "../../data/tabs";
@@ -22,6 +22,9 @@ export default function Navbar({ activeTabId, onSelectTab, searchQuery, onFocusS
   const { toggleSidebar } = useUI();
   const hasQuery = searchQuery.trim().length > 0;
 
+  // Shows on every refresh/revisit; hides once the user taps the 3-line menu button
+  const [showMenuHint, setShowMenuHint] = useState(true);
+
   const tabListRef = useRef<HTMLDivElement>(null);
   const tabButtonRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
   const hasMountedRef = useRef(false);
@@ -33,6 +36,11 @@ export default function Navbar({ activeTabId, onSelectTab, searchQuery, onFocusS
     visible: false,
   });
   const [animateIndicator, setAnimateIndicator] = useState(false);
+
+  const handleMenuClick = () => {
+    setShowMenuHint(false);
+    toggleSidebar();
+  };
 
   const measureActiveTab = useCallback(() => {
     const activeEl = tabButtonRefs.current[activeTabId];
@@ -66,15 +74,43 @@ export default function Navbar({ activeTabId, onSelectTab, searchQuery, onFocusS
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-midnight/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-3">
           <button
             type="button"
-            onClick={toggleSidebar}
+            onClick={handleMenuClick}
             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-surface-hover hover:text-slate-100 md:hidden"
             aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </button>
+
+          {/* Mobile-only callout pointing to the 3-line menu button */}
+          {showMenuHint && (
+            <div
+              role="status"
+              onClick={handleMenuClick}
+              className="absolute left-0 top-full z-50 mt-2.5 flex w-max max-w-[230px] cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-gradient-to-r from-accent-indigo to-accent-violet px-3 py-2 text-xs font-medium text-white shadow-glow-indigo md:hidden"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute -top-2 left-[10px] h-4 w-4 rotate-45 border-l border-t border-white/15 bg-accent-indigo"
+              />
+              <span className="relative z-10 leading-snug">
+                Tap here to switch between tabs
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenuHint(false);
+                }}
+                className="relative z-10 -mr-1 rounded-md p-0.5 text-white/75 transition-colors hover:bg-white/15 hover:text-white"
+                aria-label="Dismiss tip"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-indigo to-accent-violet shadow-glow-indigo">
