@@ -429,19 +429,105 @@ function ScoreSummary({
   percentage: number;
   tier: "success" | "warning" | "danger";
 }) {
-  const tierClasses = {
-    success: "border-success/40 bg-success/10 text-success-soft",
-    warning: "border-warning/40 bg-warning/10 text-warning-soft",
-    danger: "border-danger/40 bg-danger/10 text-danger-soft",
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      setProgress(1);
+      return;
+    }
+
+    const durationMs = 850;
+    let rafId = 0;
+    const start = performance.now();
+
+    function tick(now: number) {
+      const raw = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - raw, 3);
+      setProgress(eased);
+      if (raw < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [score, total, percentage]);
+
+  const displayPercentage = Math.round(progress * percentage);
+  const displayScore = Math.round(progress * score);
+  const ringRatio = progress * (percentage / 100);
+
+  const size = 124;
+  const strokeWidth = 7;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - ringRatio);
+
+  const tierStyles = {
+    success: {
+      card: "border-success/30 bg-success/[0.06]",
+      text: "text-success-soft",
+      stroke: "stroke-success",
+    },
+    warning: {
+      card: "border-warning/30 bg-warning/[0.06]",
+      text: "text-warning-soft",
+      stroke: "stroke-warning",
+    },
+    danger: {
+      card: "border-danger/30 bg-danger/[0.06]",
+      text: "text-danger-soft",
+      stroke: "stroke-danger",
+    },
   }[tier];
 
   return (
-    <div className={`flex flex-col items-center gap-2 rounded-2xl border px-6 py-8 text-center md:gap-3 md:px-8 md:py-10 ${tierClasses}`}>
-      <Trophy className="h-7 w-7 md:h-9 md:w-9" />
-      <p className="text-3xl font-semibold md:text-4xl">{percentage}%</p>
+    <div
+      className={`flex flex-col items-center gap-3 rounded-2xl border px-6 py-7 text-center md:gap-3.5 md:px-8 md:py-9 ${tierStyles.card}`}
+    >
+      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="-rotate-90"
+          aria-hidden="true"
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            className="text-white/[0.08]"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            className={tierStyles.stroke}
+          />
+        </svg>
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <Trophy className={`mb-0.5 h-4 w-4 opacity-80 ${tierStyles.text}`} />
+          <span className={`text-2xl font-semibold tabular-nums tracking-tight md:text-3xl ${tierStyles.text}`}>
+            {displayPercentage}%
+          </span>
+        </div>
+      </div>
+
       <p className="text-sm text-slate-300 md:text-base">
-        You scored <span className="font-semibold text-slate-100">{score}</span> out of{" "}
-        <span className="font-semibold text-slate-100">{total}</span>
+        You scored <span className="font-semibold tabular-nums text-slate-100">{displayScore}</span> out of{" "}
+        <span className="font-semibold tabular-nums text-slate-100">{total}</span>
       </p>
     </div>
   );

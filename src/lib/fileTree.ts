@@ -1,10 +1,113 @@
 import type { FileItem, RawFileItem, RawQuizManifestEntry } from "../types";
 
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"];
+const STRIPPABLE_EXTENSIONS = [
+  ".pdf",
+  ".html",
+  ".htm",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".doc",
+  ".docx",
+  ".ppt",
+  ".pptx",
+  ".xls",
+  ".xlsx",
+  ".txt",
+];
+
+export interface FileBadge {
+  label: string;
+  className: string;
+  kind: "quiz" | "image" | "document";
+}
 
 export function isImageFile(name: string): boolean {
   const lower = name.toLowerCase();
   return IMAGE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+export function stripFileExtension(name: string): string {
+  const lower = name.toLowerCase();
+  const matched = STRIPPABLE_EXTENSIONS.find((ext) => lower.endsWith(ext));
+  if (!matched) return name;
+  const trimmed = name.slice(0, -matched.length).trim();
+  return trimmed || name;
+}
+
+export function getFileBadge(item: FileItem, tabId?: string): FileBadge | null {
+  if (item.type === "folder") return null;
+
+  if (tabId === "quizzes" || Boolean(item.subject)) {
+    return {
+      label: "QUIZ",
+      className: "bg-accent-violet/15 text-accent-violet-soft ring-accent-violet/30",
+      kind: "quiz",
+    };
+  }
+
+  const lower = item.name.toLowerCase();
+
+  if (lower.endsWith(".pdf")) {
+    return {
+      label: "PDF",
+      className: "bg-rose-500/12 text-rose-400 ring-rose-400/25",
+      kind: "document",
+    };
+  }
+
+  if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+    return {
+      label: "HTML",
+      className: "bg-amber-500/12 text-amber-400 ring-amber-400/25",
+      kind: "document",
+    };
+  }
+
+  if (isImageFile(lower)) {
+    return {
+      label: "IMG",
+      className: "bg-sky-500/12 text-sky-400 ring-sky-400/25",
+      kind: "image",
+    };
+  }
+
+  if (lower.endsWith(".doc") || lower.endsWith(".docx")) {
+    return {
+      label: "DOC",
+      className: "bg-indigo-500/12 text-indigo-400 ring-indigo-400/25",
+      kind: "document",
+    };
+  }
+
+  if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) {
+    return {
+      label: "PPT",
+      className: "bg-orange-500/12 text-orange-400 ring-orange-400/25",
+      kind: "document",
+    };
+  }
+
+  if (lower.endsWith(".xls") || lower.endsWith(".xlsx") || lower.endsWith(".csv")) {
+    return {
+      label: "XLS",
+      className: "bg-emerald-500/12 text-emerald-400 ring-emerald-400/25",
+      kind: "document",
+    };
+  }
+
+  const dotIdx = lower.lastIndexOf(".");
+  const ext = dotIdx > 0 && dotIdx < lower.length - 1 ? lower.slice(dotIdx + 1, dotIdx + 5).toUpperCase() : "FILE";
+
+  return {
+    label: ext,
+    className: "bg-slate-500/15 text-slate-400 ring-slate-400/25",
+    kind: "document",
+  };
 }
 
 export function formatBytes(bytes: number): string {

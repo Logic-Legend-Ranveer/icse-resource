@@ -11,6 +11,10 @@
  * is registered here.
  */
 @theme {
+
+  /* Typography */
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
   /* Base app surfaces */
   --color-midnight: #0b0f19; /* primary app background */
   --color-surface: #0d121f; /* cards, rows, panels */
@@ -50,6 +54,15 @@
   --animate-fade-in: fade-in 0.15s ease-out;
   --animate-scale-in: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-slide-in-left: slide-in-left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 }
 
 @keyframes fade-in {

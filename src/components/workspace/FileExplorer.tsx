@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ChevronRight, Home } from "lucide-react";
+import { countFiles } from "../../lib/fileTree";
 import type { FileItem } from "../../types";
 import FileRow from "./FileRow";
 
@@ -31,29 +32,39 @@ export default function FileExplorer({
     return path[path.length - 1].children ?? [];
   }, [path, rootItems]);
 
+  const totalResources = useMemo(() => countFiles(currentItems), [currentItems]);
+
+  const countLabel = selectionMode
+    ? `${totalResources} ${totalResources === 1 ? "quiz" : "quizzes"}`
+    : `${totalResources} ${totalResources === 1 ? "resource" : "resources"}`;
+
   return (
     <section className="mt-8">
-      <div className="flex flex-wrap items-center gap-1 text-sm text-slate-500">
-        <button
-          type="button"
-          onClick={() => onGoToCrumb(-1)}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover hover:text-slate-200"
-        >
-          <Home className="h-3.5 w-3.5" />
-          {rootLabel}
-        </button>
-        {path.map((crumb, index) => (
-          <span key={crumb.id} className="flex items-center gap-1">
-            <ChevronRight className="h-3.5 w-3.5 text-slate-700" />
-            <button
-              type="button"
-              onClick={() => onGoToCrumb(index)}
-              className="rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover hover:text-slate-200"
-            >
-              {crumb.name}
-            </button>
-          </span>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onGoToCrumb(-1)}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover hover:text-slate-200"
+          >
+            <Home className="h-3.5 w-3.5" />
+            {rootLabel}
+          </button>
+          {path.map((crumb, index) => (
+            <span key={crumb.id} className="flex items-center gap-1">
+              <ChevronRight className="h-3.5 w-3.5 text-slate-700" />
+              <button
+                type="button"
+                onClick={() => onGoToCrumb(index)}
+                className="rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover hover:text-slate-200"
+              >
+                {crumb.name}
+              </button>
+            </span>
+          ))}
+        </div>
+
+        {totalResources > 0 && <span className="text-xs text-slate-500">{countLabel}</span>}
       </div>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-border bg-surface">
