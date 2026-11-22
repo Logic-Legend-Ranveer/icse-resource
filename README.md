@@ -4,7 +4,11 @@ A high-performance, open-source study hub built for Class 10 ICSE students. Brow
 
 🔗 **Live Website:** [icse-resource.pages.dev](https://icse-resource.pages.dev) *(Mirror: [icse-resources1.vercel.app](https://icse-resources1.vercel.app/))*
 
-![image](https://icse-resource.pages.dev/preview-image.png)
+<p align="center">
+  <a href="https://icse-resource.pages.dev">
+    <img src="https://icse-resource.pages.dev/preview-image.png" alt="ICSE Resources Preview" width="850" />
+  </a>
+</p>
 ---
 
 ## ✨ Key Features
