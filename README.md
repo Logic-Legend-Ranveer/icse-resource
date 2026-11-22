@@ -1,4 +1,4 @@
-# 📚 ICSE Resources Portal
+# 📚 ICSE Resources
 
 A high-performance, open-source study hub built for Class 10 ICSE students. Browse, preview, and practice with **5,000+ free PDFs, revision notes, past year papers (PYQs), Selina solutions, and interactive chapter quizzes**—powered by a zero-database, edge-cached serverless architecture.
 
