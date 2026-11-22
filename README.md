@@ -4,11 +4,11 @@ An open-source, zero-database study portal for Class 10 ICSE students. Browse, s
 
 **Live Site:** [icse-resource.pages.dev](https://icse-resource.pages.dev)
 
-&lt;p align=&quot;center&quot;&gt;
-  &lt;a href=&quot;https://icse-resource.pages.dev&quot;&gt;
-    &lt;img src=&quot;https://icse-resource.pages.dev/preview-image.png&quot; alt=&quot;ICSE Resources Preview&quot; width=&quot;850&quot; /&gt;
-  &lt;/a&gt;
-&lt;/p&gt;
+<p align="center">
+  <a href="https://icse-resource.pages.dev">
+    <img src="https://icse-resource.pages.dev/preview-image.png" alt="ICSE Resources Preview" width="850" />
+  </a>
+</p>
 
 ## Key Features
 
