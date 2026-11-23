@@ -24,10 +24,23 @@ export interface PdfHighlight {
 
 export interface RecentHistoryEntry {
   item: FileItem;
+  quizItems?: FileItem[];
   tabId?: string;
   contextLabel?: string;
   openedAt: number;
   highlights?: PdfHighlight[];
+}
+
+function toSlimFileItem(item: FileItem): FileItem {
+  return {
+    id: item.id,
+    name: item.name,
+    type: "file",
+    driveId: item.driveId,
+    sizeLabel: item.sizeLabel,
+    updatedAt: item.updatedAt,
+    subject: item.subject,
+  };
 }
 
 export function loadRecentHistory(): RecentHistoryEntry[] {
@@ -37,12 +50,18 @@ export function loadRecentHistory(): RecentHistoryEntry[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter(
-        (entry): entry is RecentHistoryEntry =>
-          Boolean(entry?.item?.id) &&
-          Boolean(entry?.item?.name) &&
-          typeof entry?.openedAt === "number"
-      )
+      .filter((entry): entry is RecentHistoryEntry => {
+        if (!entry?.item?.id || !entry?.item?.name || typeof entry?.openedAt !== "number") {
+          return false;
+        }
+        if (entry.quizItems !== undefined) {
+          if (!Array.isArray(entry.quizItems) || entry.quizItems.length === 0) return false;
+        }
+        if (entry.highlights !== undefined && !Array.isArray(entry.highlights)) {
+          return false;
+        }
+        return true;
+      })
       .slice(0, MAX_ITEMS);
   } catch {
     return [];
@@ -51,10 +70,7 @@ export function loadRecentHistory(): RecentHistoryEntry[] {
 
 export function saveRecentHistory(entries: RecentHistoryEntry[]): void {
   try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(entries.slice(0, MAX_ITEMS))
-    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries.slice(0, MAX_ITEMS)));
   } catch {
     // Ignore storage quota or private-browsing errors
   }
@@ -64,25 +80,17 @@ export function pushRecentHistory(
   current: RecentHistoryEntry[],
   item: FileItem,
   tabId?: string,
-  contextLabel?: string
+  contextLabel?: string,
 ): RecentHistoryEntry[] {
   if (item.type !== "file") return current;
 
-  const slimItem: FileItem = {
-    id: item.id,
-    name: item.name,
-    type: "file",
-    driveId: item.driveId,
-    sizeLabel: item.sizeLabel,
-    updatedAt: item.updatedAt,
-    subject: item.subject,
-  };
+  const slimItem = toSlimFileItem(item);
 
   // Preserve existing highlights if this file is already in the last 4 entries
   const existingEntry = current.find(
     (entry) =>
       entry.item.id === slimItem.id ||
-      (Boolean(slimItem.driveId) && entry.item.driveId === slimItem.driveId)
+      (Boolean(slimItem.driveId) && entry.item.driveId === slimItem.driveId),
   );
 
   const filtered = current.filter((entry) => {
@@ -98,6 +106,52 @@ export function pushRecentHistory(
       contextLabel,
       openedAt: Date.now(),
       highlights: existingEntry?.highlights ?? [],
+    },
+    ...filtered,
+  ].slice(0, MAX_ITEMS);
+
+  saveRecentHistory(next);
+  return next;
+}
+
+export function pushRecentQuizBundle(
+  current: RecentHistoryEntry[],
+  items: FileItem[],
+  subject: string,
+  contextLabel?: string,
+): RecentHistoryEntry[] {
+  const validFiles = items.filter((item) => item.type === "file");
+  if (validFiles.length === 0) return current;
+
+  if (validFiles.length === 1) {
+    return pushRecentHistory(current, validFiles[0], "quizzes", contextLabel);
+  }
+
+  const slimQuizItems = validFiles.map(toSlimFileItem);
+  const sortedKey = slimQuizItems
+    .map((q) => q.id)
+    .sort()
+    .join("+");
+  const bundleId = `quiz-bundle:${sortedKey}`;
+  const resolvedSubject = subject.trim() || validFiles[0].subject || "Quiz";
+
+  const bundleItem: FileItem = {
+    id: bundleId,
+    name: `${resolvedSubject} Quiz(${slimQuizItems.length} Chapters)`,
+    type: "file",
+    driveId: "",
+    subject: resolvedSubject,
+  };
+
+  const filtered = current.filter((entry) => entry.item.id !== bundleId);
+
+  const next: RecentHistoryEntry[] = [
+    {
+      item: bundleItem,
+      quizItems: slimQuizItems,
+      tabId: "quizzes",
+      contextLabel,
+      openedAt: Date.now(),
     },
     ...filtered,
   ].slice(0, MAX_ITEMS);
@@ -124,7 +178,7 @@ export function getFileHighlights(fileKey: string): PdfHighlight[] {
 export function saveFileHighlights(
   fileKey: string,
   fileName: string,
-  highlights: PdfHighlight[]
+  highlights: PdfHighlight[],
 ): void {
   if (!fileKey) return;
   const entries = loadRecentHistory();
@@ -165,8 +219,5 @@ export function formatRelativeTime(timestamp: number): string {
   const diffDay = Math.floor(diffHr / 24);
   if (diffDay === 1) return "Yesterday";
   if (diffDay < 7) return `${diffDay}d ago`;
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+  return new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
