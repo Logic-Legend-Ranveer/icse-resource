@@ -1,7 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Copy, Loader2, Trash2 } from "lucide-react";
+import {
+  getFileHighlights,
+  saveFileHighlights,
+  type HighlightColor,
+  type NormalizedRect,
+  type PdfHighlight,
+} from "../../lib/recentHistory";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -27,6 +34,7 @@ export interface PdfControlState {
 interface PdfCanvasViewerProps {
   url: string;
   fileName: string;
+  fileId?: string;
   onControlsChange?: (controls: PdfControlState | null) => void;
 }
 
@@ -44,13 +52,147 @@ interface PageRenderMeta {
   lastInWindowAt: number;
 }
 
+interface SelectionPopoverState {
+  page: number;
+  text: string;
+  rects: NormalizedRect[];
+  x: number;
+  y: number;
+}
+
+interface ActiveHighlightPopover {
+  id: string;
+  x: number;
+  y: number;
+}
+
 type PageSizeMap = Map<number, { width: number; height: number }>;
 type PageMetaMap = Map<number, PageRenderMeta>;
 type RenderTaskMap = Map<number, pdfjsLib.RenderTask>;
+type TextLayerMap = Map<number, pdfjsLib.TextLayer>;
+
+const HIGHLIGHT_SWATCHES: {
+  color: HighlightColor;
+  label: string;
+  dotClass: string;
+  overlayClass: string;
+}[] = [
+  {
+    color: "yellow",
+    label: "Yellow",
+    dotClass: "bg-yellow-300 ring-yellow-400",
+    overlayClass: "bg-yellow-300/55 hover:bg-yellow-300/75",
+  },
+  {
+    color: "green",
+    label: "Green",
+    dotClass: "bg-emerald-300 ring-emerald-400",
+    overlayClass: "bg-emerald-300/50 hover:bg-emerald-300/70",
+  },
+  {
+    color: "pink",
+    label: "Pink",
+    dotClass: "bg-rose-300 ring-rose-400",
+    overlayClass: "bg-rose-300/50 hover:bg-rose-300/70",
+  },
+];
+
+function getOverlayClass(color: HighlightColor): string {
+  return (
+    HIGHLIGHT_SWATCHES.find((s) => s.color === color)?.overlayClass ??
+    "bg-yellow-300/55 hover:bg-yellow-300/75"
+  );
+}
+
+/** Convert a rect from current totalRotation (0/90/180/270) into canonical 0° normalized coordinates */
+function toCanonicalRect(
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number,
+  totalRotation: number
+): NormalizedRect {
+  const rot = ((totalRotation % 360) + 360) % 360;
+  if (rot === 90) {
+    return { x: ry, y: 1 - rx - rw, w: rh, h: rw };
+  }
+  if (rot === 180) {
+    return { x: 1 - rx - rw, y: 1 - ry - rh, w: rw, h: rh };
+  }
+  if (rot === 270) {
+    return { x: 1 - ry - rh, y: rx, w: rh, h: rw };
+  }
+  return { x: rx, y: ry, w: rw, h: rh };
+}
+
+/** Convert canonical 0° normalized coordinates into current totalRotation (0/90/180/270) */
+function fromCanonicalRect(
+  rect: NormalizedRect,
+  totalRotation: number
+): NormalizedRect {
+  const rot = ((totalRotation % 360) + 360) % 360;
+  if (rot === 90) {
+    return {
+      x: 1 - rect.y - rect.h,
+      y: rect.x,
+      w: rect.h,
+      h: rect.w,
+    };
+  }
+  if (rot === 180) {
+    return {
+      x: 1 - rect.x - rect.w,
+      y: 1 - rect.y - rect.h,
+      w: rect.w,
+      h: rect.h,
+    };
+  }
+  if (rot === 270) {
+    return {
+      x: rect.y,
+      y: 1 - rect.x - rect.w,
+      w: rect.h,
+      h: rect.w,
+    };
+  }
+  return rect;
+}
+
+/** Merge overlapping/adjacent highlight rectangles on the same line to avoid dark seams */
+function mergeLineRects(rects: NormalizedRect[]): NormalizedRect[] {
+  if (rects.length <= 1) return rects;
+  const sorted = [...rects].sort((a, b) =>
+    Math.abs(a.y - b.y) < 0.008 ? a.x - b.x : a.y - b.y
+  );
+
+  const merged: NormalizedRect[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = merged[merged.length - 1];
+    const curr = sorted[i];
+    const sameLine =
+      Math.abs(prev.y - curr.y) < Math.max(prev.h, curr.h) * 0.45 &&
+      Math.abs(prev.h - curr.h) < Math.max(prev.h, curr.h) * 0.5;
+    const overlapsOrTouches = curr.x <= prev.x + prev.w + 0.006;
+
+    if (sameLine && overlapsOrTouches) {
+      const right = Math.max(prev.x + prev.w, curr.x + curr.w);
+      const top = Math.min(prev.y, curr.y);
+      const bottom = Math.max(prev.y + prev.h, curr.y + curr.h);
+      prev.x = Math.min(prev.x, curr.x);
+      prev.y = top;
+      prev.w = right - prev.x;
+      prev.h = bottom - top;
+    } else {
+      merged.push(curr);
+    }
+  }
+  return merged;
+}
 
 export default function PdfCanvasViewer({
   url,
   fileName,
+  fileId,
   onControlsChange,
 }: PdfCanvasViewerProps) {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -64,12 +206,23 @@ export default function PdfCanvasViewer({
   const [loadProgress, setLoadProgress] = useState("");
   const [error, setError] = useState("");
 
+  // Highlights state synced with icse_continue_history_v1 (last 4 files only)
+  const [highlights, setHighlights] = useState<PdfHighlight[]>([]);
+  const [selectionPopover, setSelectionPopover] =
+    useState<SelectionPopoverState | null>(null);
+  const [activeHighlightPopover, setActiveHighlightPopover] =
+    useState<ActiveHighlightPopover | null>(null);
+  const [copiedFeedback, setCopiedFeedback] = useState(false);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const pageWrapperRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const textLayerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Per-page unscaled sizes (lazy-populated as pages are visited, falling back to page 1 size)
+  // Per-page unscaled sizes & intrinsic PDF page rotations
   const pageSizesRef = useRef<PageSizeMap>(new Map());
+  const pageIntrinsicRotateRef = useRef(new Map());
   const defaultPageSizeRef = useRef<{ width: number; height: number }>({
     width: 595,
     height: 842,
@@ -79,11 +232,25 @@ export default function PdfCanvasViewer({
   const renderedMetaRef = useRef<PageMetaMap>(new Map());
   const inFlightPagesRef = useRef<Set<number>>(new Set());
   const activeRenderTasksRef = useRef<RenderTaskMap>(new Map());
+  const activeTextLayersRef = useRef<TextLayerMap>(new Map());
 
   const scaleRef = useRef<number>(1);
   const currentPageRef = useRef<number>(1);
   const rotationRef = useRef<number>(0);
   const pendingAnchorRef = useRef<PendingFocalAnchor | null>(null);
+
+  // Resolve canonical file ID (matches item.driveId / item.id in icse_continue_history_v1)
+  const resolvedFileId = useMemo(() => {
+    if (fileId) return fileId;
+    try {
+      const parsed = new URL(url, window.location.origin);
+      const idParam = parsed.searchParams.get("id");
+      if (idParam) return idParam;
+    } catch {
+      // Fallback to fileName
+    }
+    return fileName;
+  }, [fileId, url, fileName]);
 
   useEffect(() => {
     if (scale !== null) scaleRef.current = scale;
@@ -100,6 +267,23 @@ export default function PdfCanvasViewer({
   const getPageBaseSize = (pageNum: number) =>
     pageSizesRef.current.get(pageNum) ?? defaultPageSizeRef.current;
 
+  // Load saved highlights for this file (if it is among the last 4 files in browser cache)
+  useEffect(() => {
+    setHighlights(getFileHighlights(resolvedFileId));
+    setSelectionPopover(null);
+    setActiveHighlightPopover(null);
+  }, [resolvedFileId]);
+
+  const updateAndPersistHighlights = (
+    updater: (prev: PdfHighlight[]) => PdfHighlight[]
+  ) => {
+    setHighlights((prev) => {
+      const next = updater(prev);
+      saveFileHighlights(resolvedFileId, fileName, next);
+      return next;
+    });
+  };
+
   // 1. Load PDF document with HTTP Range streaming & JBIG2/CCITT WASM decoder assets enabled
   useEffect(() => {
     let cancelled = false;
@@ -113,10 +297,13 @@ export default function PdfCanvasViewer({
     setUserZoomed(false);
 
     pageSizesRef.current.clear();
+    pageIntrinsicRotateRef.current.clear();
     renderedMetaRef.current.clear();
     inFlightPagesRef.current.clear();
     activeRenderTasksRef.current.forEach((task) => task.cancel());
     activeRenderTasksRef.current.clear();
+    activeTextLayersRef.current.forEach((tl) => tl.cancel());
+    activeTextLayersRef.current.clear();
     pendingAnchorRef.current = null;
 
     const loadingTask = pdfjsLib.getDocument({
@@ -124,8 +311,8 @@ export default function PdfCanvasViewer({
       withCredentials: false,
       disableStream: false,
       disableRange: false,
-      disableAutoFetch: true, // Only fetch byte ranges for requested pages (±5 window)
-      rangeChunkSize: 524288, // 512 KB chunks = 8x fewer Drive API round trips
+      disableAutoFetch: true,
+      rangeChunkSize: 524288,
       wasmUrl: `${PDFJS_CDN_BASE}/wasm/`,
       cMapUrl: `${PDFJS_CDN_BASE}/cmaps/`,
       cMapPacked: true,
@@ -154,7 +341,6 @@ export default function PdfCanvasViewer({
       .then(async (doc) => {
         if (cancelled) return;
 
-        // Only inspect Page 1 on startup so Drive is never queried for pages 2..N yet
         const firstPage = await doc.getPage(1);
         if (cancelled) {
           firstPage.cleanup();
@@ -168,6 +354,7 @@ export default function PdfCanvasViewer({
         const firstSize = { width: vp.width, height: vp.height };
         defaultPageSizeRef.current = firstSize;
         pageSizesRef.current.set(1, firstSize);
+        pageIntrinsicRotateRef.current.set(1, normalizedRotate);
         firstPage.cleanup();
 
         setPdfDoc(doc);
@@ -184,6 +371,8 @@ export default function PdfCanvasViewer({
       cancelled = true;
       activeRenderTasksRef.current.forEach((task) => task.cancel());
       activeRenderTasksRef.current.clear();
+      activeTextLayersRef.current.forEach((tl) => tl.cancel());
+      activeTextLayersRef.current.clear();
       loadingTask.destroy();
     };
   }, [url]);
@@ -206,7 +395,7 @@ export default function PdfCanvasViewer({
     return () => observer.disconnect();
   }, [loading]);
 
-  // 3. Auto fit-to-width on initial load or rotation change (uses cached Page 1 size—zero extra network calls)
+  // 3. Auto fit-to-width on initial load or rotation change
   useEffect(() => {
     if (!pdfDoc || containerWidth <= 0 || userZoomed) return;
 
@@ -226,7 +415,7 @@ export default function PdfCanvasViewer({
     setScale(Number(initialScale.toFixed(3)));
   }, [pdfDoc, rotation, containerWidth, userZoomed]);
 
-  // Helper: capture exact focal point relative to contentRef (accounts for padding & mx-auto)
+  // Helper: capture exact focal point relative to contentRef
   const captureFocalAnchor = (
     viewportX: number,
     viewportY: number,
@@ -373,7 +562,10 @@ export default function PdfCanvasViewer({
           startScrollTop + startMidY - pinchContentOffsetTop;
       } else if (e.touches.length === 1) {
         const now = Date.now();
-        if (now - lastTapTime < 280) {
+        // Only trigger double-tap zoom if user did not select text
+        const sel = window.getSelection();
+        const hasSelection = Boolean(sel && sel.toString().trim().length > 0);
+        if (!hasSelection && now - lastTapTime < 280) {
           const rect = container.getBoundingClientRect();
           const tapX = e.touches[0].clientX - rect.left;
           const tapY = e.touches[0].clientY - rect.top;
@@ -523,7 +715,7 @@ export default function PdfCanvasViewer({
     };
   }, [loading]);
 
-  // 5A. Synchronously resize ALL canvas CSS placeholders & restore exact focal scroll BEFORE paint
+  // 5A. Synchronously resize ALL page wrappers, canvases, & text layers BEFORE paint
   useLayoutEffect(() => {
     if (!pdfDoc || scale === null) return;
     const container = containerRef.current;
@@ -532,15 +724,27 @@ export default function PdfCanvasViewer({
     const isQuarterTurn = (((rotation % 360) + 360) % 360) % 180 !== 0;
 
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+      const wrapper = pageWrapperRefs.current[pageNum - 1];
       const canvas = canvasRefs.current[pageNum - 1];
-      if (!canvas) continue;
+      const textLayerDiv = textLayerRefs.current[pageNum - 1];
 
       const base = getPageBaseSize(pageNum);
-      const w = (isQuarterTurn ? base.height : base.width) * scale;
-      const h = (isQuarterTurn ? base.width : base.height) * scale;
+      const w = Math.floor((isQuarterTurn ? base.height : base.width) * scale);
+      const h = Math.floor((isQuarterTurn ? base.width : base.height) * scale);
 
-      canvas.style.width = `${Math.floor(w)}px`;
-      canvas.style.height = `${Math.floor(h)}px`;
+      if (wrapper) {
+        wrapper.style.width = `${w}px`;
+        wrapper.style.height = `${h}px`;
+      }
+      if (canvas) {
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+      }
+      if (textLayerDiv) {
+        textLayerDiv.style.width = `${w}px`;
+        textLayerDiv.style.height = `${h}px`;
+        textLayerDiv.style.setProperty("--total-scale-factor", String(scale));
+      }
     }
 
     const anchor = pendingAnchorRef.current;
@@ -565,7 +769,7 @@ export default function PdfCanvasViewer({
     }
   }, [pdfDoc, scale, rotation]);
 
-  // 5B. Windowed Rendering: Only fetch & render [currentPage - 5 .. currentPage + 5]
+  // 5B. Windowed Rendering: Render Canvas + Selectable TextLayer for [currentPage - 5 .. currentPage + 5]
   useEffect(() => {
     if (!pdfDoc || scale === null) return;
     let cancelled = false;
@@ -574,7 +778,6 @@ export default function PdfCanvasViewer({
     const maxPage = Math.min(pdfDoc.numPages, currentPage + WINDOW_RADIUS);
     const now = Date.now();
 
-    // Update last-seen timestamp for any already-rendered pages still inside the ±5 window
     for (let p = minPage; p <= maxPage; p++) {
       const existing = renderedMetaRef.current.get(p);
       if (existing) {
@@ -582,16 +785,17 @@ export default function PdfCanvasViewer({
       }
     }
 
-    // Cancel any in-flight render tasks that are now outside the ±5 window
+    // Cancel any in-flight render tasks outside the ±5 window
     activeRenderTasksRef.current.forEach((task, pageNum) => {
       if (pageNum < minPage || pageNum > maxPage) {
         task.cancel();
         activeRenderTasksRef.current.delete(pageNum);
+        activeTextLayersRef.current.get(pageNum)?.cancel();
+        activeTextLayersRef.current.delete(pageNum);
         inFlightPagesRef.current.delete(pageNum);
       }
     });
 
-    // Prioritize currentPage first, then outward (currentPage+1, currentPage-1, +2, -2, ...)
     const orderedPages: number[] = [currentPage];
     for (let offset = 1; offset <= WINDOW_RADIUS; offset++) {
       if (currentPage + offset <= maxPage) orderedPages.push(currentPage + offset);
@@ -609,24 +813,31 @@ export default function PdfCanvasViewer({
         return;
       }
 
-      // Cancel stale render task for this page (e.g., if user zoomed while it was mid-render)
       const prevTask = activeRenderTasksRef.current.get(pageNum);
       if (prevTask) {
         prevTask.cancel();
         activeRenderTasksRef.current.delete(pageNum);
       }
+      const prevTextLayer = activeTextLayersRef.current.get(pageNum);
+      if (prevTextLayer) {
+        prevTextLayer.cancel();
+        activeTextLayersRef.current.delete(pageNum);
+      }
 
       inFlightPagesRef.current.add(pageNum);
 
       try {
+        const wrapper = pageWrapperRefs.current[pageNum - 1];
         const canvas = canvasRefs.current[pageNum - 1];
+        const textLayerDiv = textLayerRefs.current[pageNum - 1];
         if (!canvas || cancelled) return;
 
-        // PDF.js only requests byte ranges for this specific page from Cloudflare Worker / Drive
         const page = await pdfDoc.getPage(pageNum);
         if (cancelled) return;
 
         const normalizedRotate = ((page.rotate % 360) + 360) % 360;
+        pageIntrinsicRotateRef.current.set(pageNum, normalizedRotate);
+
         const unscaledVp = page.getViewport({
           scale: 1,
           rotation: normalizedRotate,
@@ -639,7 +850,6 @@ export default function PdfCanvasViewer({
         const totalRotation = (((page.rotate + rotation) % 360) + 360) % 360;
         const viewport = page.getViewport({ scale, rotation: totalRotation });
 
-        // Clamp backing-store pixel ratio so high-DPI manga scans stay within browser canvas limits
         const rawDpr = window.devicePixelRatio || 1;
         const unscaledPixels = viewport.width * viewport.height;
         const outputScale = Math.min(
@@ -650,10 +860,18 @@ export default function PdfCanvasViewer({
         const context = canvas.getContext("2d");
         if (!context) return;
 
+        const cssWidth = Math.floor(viewport.width);
+        const cssHeight = Math.floor(viewport.height);
+
+        if (wrapper) {
+          wrapper.style.width = `${cssWidth}px`;
+          wrapper.style.height = `${cssHeight}px`;
+        }
+
         canvas.width = Math.floor(viewport.width * outputScale);
         canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
 
         const transform =
           outputScale !== 1
@@ -669,6 +887,27 @@ export default function PdfCanvasViewer({
         activeRenderTasksRef.current.set(pageNum, task);
 
         await task.promise;
+        if (cancelled) return;
+
+        // Render selectable/copyable DOM TextLayer over the canvas
+        if (textLayerDiv) {
+          textLayerDiv.innerHTML = "";
+          textLayerDiv.style.width = `${cssWidth}px`;
+          textLayerDiv.style.height = `${cssHeight}px`;
+          textLayerDiv.style.setProperty("--total-scale-factor", String(scale));
+
+          const textContent = await page.getTextContent();
+          if (cancelled) return;
+
+          const textLayer = new pdfjsLib.TextLayer({
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport,
+          });
+          activeTextLayersRef.current.set(pageNum, textLayer);
+          await textLayer.render();
+          activeTextLayersRef.current.delete(pageNum);
+        }
 
         if (!cancelled) {
           renderedMetaRef.current.set(pageNum, {
@@ -685,6 +924,7 @@ export default function PdfCanvasViewer({
         }
       } finally {
         activeRenderTasksRef.current.delete(pageNum);
+        activeTextLayersRef.current.delete(pageNum);
         inFlightPagesRef.current.delete(pageNum);
       }
     };
@@ -712,15 +952,12 @@ export default function PdfCanvasViewer({
       const maxKeep = Math.min(pdfDoc.numPages, activePage + WINDOW_RADIUS);
 
       for (const [pageNum, meta] of renderedMetaRef.current.entries()) {
-        // Refresh timestamp if currently in window
         if (pageNum >= minKeep && pageNum <= maxKeep) {
           meta.lastInWindowAt = now;
           continue;
         }
 
-        // Evict if outside ±5 window for >= 2 minutes
         if (now - meta.lastInWindowAt >= EVICT_AFTER_MS) {
-          // 1. Free GPU/Canvas bitmap backing store while preserving CSS placeholder height/width
           const canvas = canvasRefs.current[pageNum - 1];
           if (canvas) {
             const ctx = canvas.getContext("2d");
@@ -729,7 +966,11 @@ export default function PdfCanvasViewer({
             canvas.height = 0;
           }
 
-          // 2. Free PDF.js internal page operator lists, images, and fonts from JS heap
+          const textLayerDiv = textLayerRefs.current[pageNum - 1];
+          if (textLayerDiv) {
+            textLayerDiv.innerHTML = "";
+          }
+
           try {
             const page = await pdfDoc.getPage(pageNum);
             page.cleanup();
@@ -749,7 +990,128 @@ export default function PdfCanvasViewer({
     return () => window.clearInterval(intervalId);
   }, [pdfDoc]);
 
-  // 6. Push control handlers up to ViewerModal
+  // 6. Track text selections inside PDF pages to show Highlight + Copy popover
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let selectionTimer: number | undefined;
+
+    const evaluateSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        setSelectionPopover(null);
+        return;
+      }
+
+      const rawText = selection.toString().trim();
+      if (!rawText) {
+        setSelectionPopover(null);
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const ancestor = range.commonAncestorContainer;
+      const ancestorEl =
+        ancestor.nodeType === Node.ELEMENT_NODE
+          ? (ancestor as Element)
+          : ancestor.parentElement;
+
+      if (!ancestorEl || !container.contains(ancestorEl)) {
+        setSelectionPopover(null);
+        return;
+      }
+
+      // Find which page wrapper owns this selection
+      let matchedPage = -1;
+      let pageEl: HTMLDivElement | null = null;
+      for (let i = 0; i < pageWrapperRefs.current.length; i++) {
+        const candidate = pageWrapperRefs.current[i];
+        if (candidate && candidate.contains(ancestorEl)) {
+          matchedPage = i + 1;
+          pageEl = candidate;
+          break;
+        }
+      }
+
+      if (matchedPage === -1 || !pageEl) {
+        setSelectionPopover(null);
+        return;
+      }
+
+      const pageRect = pageEl.getBoundingClientRect();
+      if (pageRect.width <= 0 || pageRect.height <= 0) return;
+
+      const intrinsicRotate =
+        pageIntrinsicRotateRef.current.get(matchedPage) ?? 0;
+      const totalRotation =
+        (((intrinsicRotate + rotationRef.current) % 360) + 360) % 360;
+
+      const clientRects = Array.from(range.getClientRects()).filter(
+        (r) => r.width >= 2 && r.height >= 2
+      );
+      if (clientRects.length === 0) {
+        setSelectionPopover(null);
+        return;
+      }
+
+      const canonicalRects = mergeLineRects(
+        clientRects.map((r) => {
+          const rx = Math.max(0, (r.left - pageRect.left) / pageRect.width);
+          const ry = Math.max(0, (r.top - pageRect.top) / pageRect.height);
+          const rw = Math.min(1 - rx, r.width / pageRect.width);
+          const rh = Math.min(1 - ry, r.height / pageRect.height);
+          return toCanonicalRect(rx, ry, rw, rh, totalRotation);
+        })
+      );
+
+      const rangeRect = range.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      // Position floating popover safely inside container bounds
+      const popoverHalfWidth = 108;
+      const rawCenterX =
+        rangeRect.left - containerRect.left + rangeRect.width / 2;
+      const clampedX = Math.max(
+        popoverHalfWidth + 8,
+        Math.min(rawCenterX, containerRect.width - popoverHalfWidth - 8)
+      );
+
+      const spaceAbove = rangeRect.top - containerRect.top;
+      const posY =
+        spaceAbove > 52
+          ? rangeRect.top - containerRect.top - 44
+          : rangeRect.bottom - containerRect.top + 8;
+
+      setActiveHighlightPopover(null);
+      setCopiedFeedback(false);
+      setSelectionPopover({
+        page: matchedPage,
+        text: rawText,
+        rects: canonicalRects,
+        x: clampedX,
+        y: Math.max(8, Math.min(posY, containerRect.height - 48)),
+      });
+    };
+
+    const scheduleEvaluation = () => {
+      window.clearTimeout(selectionTimer);
+      selectionTimer = window.setTimeout(evaluateSelection, 80);
+    };
+
+    document.addEventListener("selectionchange", scheduleEvaluation);
+    container.addEventListener("mouseup", scheduleEvaluation);
+    container.addEventListener("touchend", scheduleEvaluation);
+
+    return () => {
+      window.clearTimeout(selectionTimer);
+      document.removeEventListener("selectionchange", scheduleEvaluation);
+      container.removeEventListener("mouseup", scheduleEvaluation);
+      container.removeEventListener("touchend", scheduleEvaluation);
+    };
+  }, [loading]);
+
+  // 7. Push control handlers up to ViewerModal
   useEffect(() => {
     if (!onControlsChange) return;
 
@@ -761,8 +1123,8 @@ export default function PdfCanvasViewer({
     const scrollToPage = (targetPage: number) => {
       const clamped = Math.max(1, Math.min(targetPage, numPages));
       setCurrentPage(clamped);
-      const targetCanvas = canvasRefs.current[clamped - 1];
-      targetCanvas?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const targetWrapper = pageWrapperRefs.current[clamped - 1];
+      targetWrapper?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     const stepZoom = (factor: number) => {
@@ -795,6 +1157,8 @@ export default function PdfCanvasViewer({
       nextPage: () => scrollToPage(currentPage + 1),
       rotate: () => {
         pendingAnchorRef.current = null;
+        setSelectionPopover(null);
+        setActiveHighlightPopover(null);
         setUserZoomed(false);
         setRotation((prev) => (prev + 90) % 360);
       },
@@ -815,6 +1179,51 @@ export default function PdfCanvasViewer({
   useEffect(() => {
     return () => onControlsChange?.(null);
   }, [onControlsChange]);
+
+  const handleApplyHighlight = (color: HighlightColor) => {
+    if (!selectionPopover) return;
+    const newHighlight: PdfHighlight = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      page: selectionPopover.page,
+      text: selectionPopover.text,
+      color,
+      rects: selectionPopover.rects,
+      createdAt: Date.now(),
+    };
+
+    updateAndPersistHighlights((prev) => [...prev, newHighlight]);
+    window.getSelection()?.removeAllRanges();
+    setSelectionPopover(null);
+  };
+
+  const handleCopySelection = async () => {
+    if (!selectionPopover) return;
+    try {
+      await navigator.clipboard.writeText(selectionPopover.text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = selectionPopover.text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopiedFeedback(true);
+    window.setTimeout(() => {
+      setCopiedFeedback(false);
+      window.getSelection()?.removeAllRanges();
+      setSelectionPopover(null);
+    }, 650);
+  };
+
+  const handleDeleteHighlight = (highlightId: string) => {
+    updateAndPersistHighlights((prev) =>
+      prev.filter((item) => item.id !== highlightId)
+    );
+    setActiveHighlightPopover(null);
+  };
 
   if (loading) {
     return (
@@ -838,42 +1247,217 @@ export default function PdfCanvasViewer({
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{ touchAction: "pan-x pan-y" }}
-      className="h-full w-full min-w-0 max-w-full overflow-auto bg-midnight p-2 md:p-4"
-      onScroll={() => {
-        if (!containerRef.current) return;
-        const containerTop = containerRef.current.getBoundingClientRect().top;
-        let closestPage = 1;
-        let minDistance = Infinity;
+    <div className="relative h-full w-full min-w-0 max-w-full">
+      {/* Scoped PDF.js TextLayer styling so transparent selectable text aligns cleanly over canvas */}
+      <style>{`
+        .pdf-text-layer {
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+          line-height: 1;
+          text-size-adjust: none;
+          forced-color-adjust: none;
+          transform-origin: 0 0;
+          user-select: text;
+          -webkit-user-select: text;
+        }
+        .pdf-text-layer span,
+        .pdf-text-layer br {
+          color: transparent;
+          position: absolute;
+          white-space: pre;
+          cursor: text;
+          transform-origin: 0% 0%;
+        }
+        .pdf-text-layer ::selection {
+          background: rgba(99, 102, 241, 0.32);
+        }
+      `}</style>
 
-        canvasRefs.current.forEach((canvas, idx) => {
-          if (!canvas) return;
-          const dist = Math.abs(
-            canvas.getBoundingClientRect().top - containerTop - 16
-          );
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestPage = idx + 1;
-          }
-        });
-        setCurrentPage(closestPage);
-      }}
-    >
+      {/* Floating Selection Toolbar: Highlight Swatches + Copy */}
+      {selectionPopover && (
+        <div
+          style={{
+            left: `${selectionPopover.x}px`,
+            top: `${selectionPopover.y}px`,
+            transform: "translateX(-50%)",
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute z-30 flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-900/95 px-2.5 py-1.5 text-xs text-slate-100 shadow-xl backdrop-blur"
+        >
+          {HIGHLIGHT_SWATCHES.map((swatch) => (
+            <button
+              key={swatch.color}
+              type="button"
+              onClick={() => handleApplyHighlight(swatch.color)}
+              title={`Highlight ${swatch.label}`}
+              className={`h-4 w-4 rounded-full ring-1 transition-transform hover:scale-115 ${swatch.dotClass}`}
+            />
+          ))}
+          <span className="mx-0.5 h-3.5 w-px bg-slate-700" />
+          <button
+            type="button"
+            onClick={handleCopySelection}
+            className="flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-slate-100 transition-colors hover:bg-slate-800"
+          >
+            {copiedFeedback ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5 text-accent-indigo-soft" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Floating Delete Popover when clicking an existing highlight */}
+      {activeHighlightPopover && (
+        <div
+          style={{
+            left: `${activeHighlightPopover.x}px`,
+            top: `${activeHighlightPopover.y}px`,
+            transform: "translateX(-50%)",
+          }}
+          className="absolute z-30 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/95 px-2.5 py-1 text-xs text-slate-100 shadow-xl backdrop-blur"
+        >
+          <button
+            type="button"
+            onClick={() => handleDeleteHighlight(activeHighlightPopover.id)}
+            className="flex items-center gap-1 font-medium text-rose-300 hover:text-rose-200"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Remove highlight</span>
+          </button>
+        </div>
+      )}
+
       <div
-        ref={contentRef}
-        className="mx-auto flex w-max flex-col items-center gap-3 will-change-transform md:gap-4"
+        ref={containerRef}
+        style={{ touchAction: "pan-x pan-y" }}
+        className="h-full w-full min-w-0 max-w-full overflow-auto bg-midnight p-2 md:p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget || e.target === contentRef.current) {
+            setActiveHighlightPopover(null);
+          }
+        }}
+        onScroll={() => {
+          setSelectionPopover(null);
+          setActiveHighlightPopover(null);
+
+          if (!containerRef.current) return;
+          const containerTop = containerRef.current.getBoundingClientRect().top;
+          let closestPage = 1;
+          let minDistance = Infinity;
+
+          pageWrapperRefs.current.forEach((wrapper, idx) => {
+            if (!wrapper) return;
+            const dist = Math.abs(
+              wrapper.getBoundingClientRect().top - containerTop - 16
+            );
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestPage = idx + 1;
+            }
+          });
+          setCurrentPage(closestPage);
+        }}
       >
-        {Array.from({ length: numPages }, (_, index) => (
-          <canvas
-            key={index}
-            ref={(el) => {
-              canvasRefs.current[index] = el;
-            }}
-            className="rounded bg-white shadow-lg"
-          />
-        ))}
+        <div
+          ref={contentRef}
+          className="mx-auto flex w-max flex-col items-center gap-3 will-change-transform md:gap-4"
+        >
+          {Array.from({ length: numPages }, (_, index) => {
+            const pageNum = index + 1;
+            const pageHighlights = highlights.filter((h) => h.page === pageNum);
+            const intrinsicRotate =
+              pageIntrinsicRotateRef.current.get(pageNum) ?? 0;
+            const totalRotation =
+              (((intrinsicRotate + rotation) % 360) + 360) % 360;
+
+            return (
+              <div
+                key={index}
+                ref={(el) => {
+                  pageWrapperRefs.current[index] = el;
+                }}
+                className="relative select-text overflow-hidden rounded bg-white shadow-lg"
+              >
+                {/* 1. Rendered PDF Page Bitmap */}
+                <canvas
+                  ref={(el) => {
+                    canvasRefs.current[index] = el;
+                  }}
+                  className="block"
+                />
+
+                {/* 2. Saved Highlights Overlay (mix-blend-multiply keeps underlying text crisp) */}
+                {pageHighlights.length > 0 && (
+                  <div className="pointer-events-none absolute inset-0 z-10 mix-blend-multiply">
+                    {pageHighlights.map((hl) =>
+                      hl.rects.map((canonicalRect, rIdx) => {
+                        const rect = fromCanonicalRect(
+                          canonicalRect,
+                          totalRotation
+                        );
+                        return (
+                          <div
+                            key={`${hl.id}-${rIdx}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const container = containerRef.current;
+                              if (!container) return;
+                              const containerRect =
+                                container.getBoundingClientRect();
+                              const targetRect =
+                                e.currentTarget.getBoundingClientRect();
+                              const rawX =
+                                targetRect.left -
+                                containerRect.left +
+                                targetRect.width / 2;
+                              const rawY =
+                                targetRect.top - containerRect.top - 36;
+                              setSelectionPopover(null);
+                              setActiveHighlightPopover({
+                                id: hl.id,
+                                x: Math.max(
+                                  80,
+                                  Math.min(rawX, containerRect.width - 80)
+                                ),
+                                y: Math.max(8, rawY),
+                              });
+                            }}
+                            style={{
+                              left: `${rect.x * 100}%`,
+                              top: `${rect.y * 100}%`,
+                              width: `${rect.w * 100}%`,
+                              height: `${rect.h * 100}%`,
+                            }}
+                            className={`pointer-events-auto absolute cursor-pointer rounded-[2px] transition-colors ${getOverlayClass(
+                              hl.color
+                            )}`}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Transparent Selectable & Copyable PDF.js TextLayer */}
+                <div
+                  ref={(el) => {
+                    textLayerRefs.current[index] = el;
+                  }}
+                  className="pdf-text-layer z-20"
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
