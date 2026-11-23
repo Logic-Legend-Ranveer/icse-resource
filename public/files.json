@@ -3,7 +3,7 @@
     "name": "Study Assets",
     "type": "folder",
     "fileId": "",
-    "size": 6232007901,
+    "size": 6228205764,
     "children": [
       {
         "name": "Biology",
@@ -1853,7 +1853,7 @@
         "name": "English Literature",
         "type": "folder",
         "fileId": "",
-        "size": 706535470,
+        "size": 702733333,
         "children": [
           {
             "name": "English Literature Revision notes.pdf",
@@ -1866,8 +1866,15 @@
             "name": "Julius Caesar",
             "type": "folder",
             "fileId": "",
-            "size": 284425281,
+            "size": 205301828,
             "children": [
+              {
+                "name": "783905172-Shakespeare-s-Julius-Caesar-Manga-Edition-PDFDrive.pdf",
+                "type": "file",
+                "fileId": "1KivNgDGm9Q53bfk3Rg08b4wTbD0QGXrZ",
+                "size": 31988278,
+                "addedAt": "2026-11-23"
+              },
               {
                 "name": "ACT - III",
                 "type": "folder",
@@ -2351,6 +2358,13 @@
                 ]
               },
               {
+                "name": "English Literature - Self-Help by Arun Deep.pdf",
+                "type": "file",
+                "fileId": "1ezLaaFeom1bIJMS2rJdAVsqQ2VtULo_m",
+                "size": 30606596,
+                "addedAt": "2026-09-23"
+              },
+              {
                 "name": "Julius Caesar - Keywords.pdf",
                 "type": "file",
                 "fileId": "1vXWMna8wRPwgZSUlWVip-iuz18DDcenx",
@@ -2386,27 +2400,6 @@
                 "addedAt": "2026-09-23"
               },
               {
-                "name": "Julius Caesar Question Bank - Educart.pdf",
-                "type": "file",
-                "fileId": "1id39WxD-Y1NCiaPPonc_GxtrbW2sZM8a",
-                "size": 31416658,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Julius Caesar Teacher_s Handbook.pdf",
-                "type": "file",
-                "fileId": "1wb3ADjh8DhU5h32YR9Oot6Hs4sqo_GNy",
-                "size": 18382553,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Julius Caesar Workbook - Almond.pdf",
-                "type": "file",
-                "fileId": "1EZN8aWVpd3wn--FoBs9WX-5Z3jg9_J89",
-                "size": 56128701,
-                "addedAt": "2026-09-23"
-              },
-              {
                 "name": "Julius Caesar_ Entire Play.pdf",
                 "type": "file",
                 "fileId": "1nXuYZiBO50oFS6Lu4DlYEZxano8fG2wr",
@@ -2418,13 +2411,6 @@
                 "type": "file",
                 "fileId": "1_dFeW1fcxVtULhA8r961lm_pyCXkmdHb",
                 "size": 45004775,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "Shakespeare_s Julius Caesar - Manga Edition.pdf",
-                "type": "file",
-                "fileId": "1mDjA_Mmo0vGujNRR5SMd8TGRQ6zWpG0q",
-                "size": 35790415,
                 "addedAt": "2026-09-23"
               },
               {
@@ -2440,7 +2426,7 @@
             "name": "Question banks",
             "type": "folder",
             "fileId": "",
-            "size": 341097370,
+            "size": 416418686,
             "children": [
               {
                 "name": "CFQ-ICSE-Literature-in-English-X.pdf",
@@ -2454,13 +2440,6 @@
                 "type": "file",
                 "fileId": "1Qw95tub669_67j0KMCEp0F3uLFEz73PT",
                 "size": 56377984,
-                "addedAt": "2026-09-23"
-              },
-              {
-                "name": "English Literature - Self-Help by Arun Deep.pdf",
-                "type": "file",
-                "fileId": "1ezLaaFeom1bIJMS2rJdAVsqQ2VtULo_m",
-                "size": 30606596,
                 "addedAt": "2026-09-23"
               },
               {
@@ -2482,6 +2461,27 @@
                 "type": "file",
                 "fileId": "1_rh0DSAJQrqlU4D9nBYWFUsQg0GEG77c",
                 "size": 56339249,
+                "addedAt": "2026-09-23"
+              },
+              {
+                "name": "Julius Caesar Question Bank - Educart.pdf",
+                "type": "file",
+                "fileId": "1id39WxD-Y1NCiaPPonc_GxtrbW2sZM8a",
+                "size": 31416658,
+                "addedAt": "2026-09-23"
+              },
+              {
+                "name": "Julius Caesar Teacher_s Handbook.pdf",
+                "type": "file",
+                "fileId": "1wb3ADjh8DhU5h32YR9Oot6Hs4sqo_GNy",
+                "size": 18382553,
+                "addedAt": "2026-09-23"
+              },
+              {
+                "name": "Julius Caesar Workbook - Almond.pdf",
+                "type": "file",
+                "fileId": "1EZN8aWVpd3wn--FoBs9WX-5Z3jg9_J89",
+                "size": 56128701,
                 "addedAt": "2026-09-23"
               },
               {
