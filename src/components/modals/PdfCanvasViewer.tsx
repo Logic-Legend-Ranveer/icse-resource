@@ -5,6 +5,8 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
+const PDFJS_CDN_BASE = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}`;
+const MAX_CANVAS_AREA = 16_000_000; // ~16 MP safe limit across desktop & mobile browsers
 const WINDOW_RADIUS = 5; // Render 5 pages backward and 5 pages forward
 const EVICT_AFTER_MS = 2 * 60 * 1000; // 2 minutes outside the ±5 window
 const EVICT_CHECK_INTERVAL_MS = 15 * 1000; // Check every 15 seconds
@@ -98,7 +100,7 @@ export default function PdfCanvasViewer({
   const getPageBaseSize = (pageNum: number) =>
     pageSizesRef.current.get(pageNum) ?? defaultPageSizeRef.current;
 
-  // 1. Load PDF document with HTTP Range streaming enabled (does NOT download full 75 MB upfront)
+  // 1. Load PDF document with HTTP Range streaming & JBIG2/CCITT WASM decoder assets enabled
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -124,6 +126,11 @@ export default function PdfCanvasViewer({
       disableRange: false,
       disableAutoFetch: true, // Only fetch byte ranges for requested pages (±5 window)
       rangeChunkSize: 524288, // 512 KB chunks = 8x fewer Drive API round trips
+      wasmUrl: `${PDFJS_CDN_BASE}/wasm/`,
+      cMapUrl: `${PDFJS_CDN_BASE}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `${PDFJS_CDN_BASE}/standard_fonts/`,
+      maxImageSize: -1,
     });
 
     loadingTask.onProgress = ({
@@ -631,7 +638,14 @@ export default function PdfCanvasViewer({
 
         const totalRotation = (((page.rotate + rotation) % 360) + 360) % 360;
         const viewport = page.getViewport({ scale, rotation: totalRotation });
-        const outputScale = window.devicePixelRatio || 1;
+
+        // Clamp backing-store pixel ratio so high-DPI manga scans stay within browser canvas limits
+        const rawDpr = window.devicePixelRatio || 1;
+        const unscaledPixels = viewport.width * viewport.height;
+        const outputScale = Math.min(
+          rawDpr,
+          Math.sqrt(MAX_CANVAS_AREA / Math.max(1, unscaledPixels))
+        );
 
         const context = canvas.getContext("2d");
         if (!context) return;
