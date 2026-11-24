@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { UIProvider, useUI } from "./context/UIContext";
 import { TAB_LABELS } from "./data/tabs";
 import type { TabId, TreeTabId } from "./data/tabs";
 import { TAB_SOURCE_FOLDER_NAME } from "./data/tabs";
 import type { FileItem } from "./types";
-import { fetchFilesJson, fetchQuizManifest, fetchSynonyms } from "./lib/api";
+import { fetchFilesJson, fetchQuizManifest, fetchSynonyms, fetchExceptions } from "./lib/api";
 import { buildQuizTree, countFiles, findFolderChildren, getRecentRawFiles, normalizeFileTree } from "./lib/fileTree";
+import { loadRecentHistory, pushRecentHistory, pushRecentQuizBundle, saveRecentHistory } from "./lib/recentHistory";
+import type { RecentHistoryEntry } from "./lib/recentHistory";
 import { buildSearchIndex, buildTermGroups, matchesTermGroups } from "./lib/search";
 import type { SearchEntry } from "./lib/search";
 import Navbar from "./components/layout/Navbar";
 import MobileTabDrawer from "./components/layout/MobileTabDrawer";
 import ContentsBar from "./components/layout/ContentsBar";
 import Hero from "./components/workspace/Hero";
-import ClassSelector from "./components/workspace/ClassSelector";
+import ContinueSection from "./components/workspace/ContinueSection";
 import FileExplorer from "./components/workspace/FileExplorer";
 import SearchResultsView from "./components/workspace/SearchResultsView";
 import AboutPanel from "./components/workspace/AboutPanel";
@@ -22,21 +24,31 @@ import QuizSelectionBar from "./components/floating/QuizSelectionBar";
 import ViewerModal from "./components/modals/ViewerModal";
 import QuizModal from "./components/modals/QuizModal";
 import RecentAdditionsModal from "./components/modals/RecentAdditionsModal";
+import ConstellationBackground from "./components/layout/ConstellationBackground";
 
 const DEFAULT_TAB_ID: TabId = "syllabus";
-const EMPTY_TREES: Record<TreeTabId, FileItem[]> = { syllabus: [], study: [], quizzes: [], "sample-papers": [] };
+const EMPTY_TREES: Record<TreeTabId, FileItem[]> = {
+  syllabus: [],
+  study: [],
+  quizzes: [],
+  "pyq-prelims": [],
+  "official-cisce-resources": [],
+  "book-solutions": [],
+};
 
 type DataStatus = "loading" | "ready" | "error";
 
 function AppShell() {
   const { activeModal, openViewer, openQuiz } = useUI();
+  const heroSearchRef = useRef<HTMLInputElement>(null);
 
   const [dataStatus, setDataStatus] = useState<DataStatus>("loading");
   const [dataError, setDataError] = useState("");
   const [contentTrees, setContentTrees] = useState<Record<TreeTabId, FileItem[]>>(EMPTY_TREES);
   const [recentFiles, setRecentFiles] = useState<FileItem[]>([]);
+  const [continueHistory, setContinueHistory] = useState<RecentHistoryEntry[]>(() => loadRecentHistory());
   const [synonyms, setSynonyms] = useState<Record<string, string[]>>({});
-
+  const [exceptions, setExceptions] = useState<Record<string, string[]>>({});
   const [activeTabId, setActiveTabId] = useState<TabId>(DEFAULT_TAB_ID);
   const [explorerPath, setExplorerPath] = useState<FileItem[]>([]);
   const [selectedQuizIds, setSelectedQuizIds] = useState<Set<string>>(new Set());
@@ -44,18 +56,21 @@ function AppShell() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchFilesJson(), fetchQuizManifest(), fetchSynonyms()])
-      .then(([rawFiles, rawQuizzes, syn]) => {
+    Promise.all([fetchFilesJson(), fetchQuizManifest(), fetchSynonyms(), fetchExceptions()])
+      .then(([rawFiles, rawQuizzes, syn, exps]) => {
         if (cancelled) return;
         const normalizedRoot = normalizeFileTree(rawFiles);
         setContentTrees({
           syllabus: findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME.syllabus),
           study: findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME.study),
-          "sample-papers": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["sample-papers"]),
+          "pyq-prelims": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["pyq-prelims"]),
+          "official-cisce-resources": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["official-cisce-resources"]),
+          "book-solutions": findFolderChildren(normalizedRoot, TAB_SOURCE_FOLDER_NAME["book-solutions"]),
           quizzes: buildQuizTree(rawQuizzes),
         });
         setRecentFiles(normalizeFileTree(getRecentRawFiles(rawFiles, 5)));
         setSynonyms(syn);
+        setExceptions(exps);
         setDataStatus("ready");
       })
       .catch((err: Error) => {
@@ -68,20 +83,96 @@ function AppShell() {
     };
   }, []);
 
-  // Selecting quizzes only makes sense within the folder currently being
-  // browsed — clear it on any navigation so a stale selection can't carry
-  // across subjects or tabs.
   useEffect(() => {
     setSelectedQuizIds(new Set());
   }, [activeTabId, explorerPath]);
 
+  const handleFocusSearch = useCallback(() => {
+    if (activeTabId === "about") {
+      setActiveTabId(DEFAULT_TAB_ID);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(() => {
+      heroSearchRef.current?.focus();
+    });
+  }, [activeTabId]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        handleFocusSearch();
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+      if (e.key === "/" && !isTyping && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        handleFocusSearch();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleFocusSearch]);
+
+  const isQuizTab = activeTabId === "quizzes";
   const searchIndex = useMemo(() => buildSearchIndex(contentTrees), [contentTrees]);
   const isSearching = searchQuery.trim().length > 0;
   const searchResults = useMemo<SearchEntry[]>(() => {
     if (!isSearching) return [];
     const termGroups = buildTermGroups(searchQuery, synonyms);
-    return searchIndex.filter((entry) => matchesTermGroups(entry, termGroups)).slice(0, 100);
-  }, [isSearching, searchQuery, synonyms, searchIndex]);
+    return searchIndex
+      .filter((entry) => entry.item.type !== "folder")
+      .filter((entry) => (isQuizTab ? entry.tabId === "quizzes" : entry.tabId !== "quizzes"))
+      .filter((entry) => matchesTermGroups(entry, termGroups, searchQuery, exceptions))
+      .slice(0, 100);
+  }, [isSearching, isQuizTab, searchQuery, synonyms, exceptions, searchIndex]);
+
+  function openAndTrackItem(item: FileItem, tabId: string, contextLabel: string) {
+    setContinueHistory((prev) => pushRecentHistory(prev, item, tabId, contextLabel));
+    if (tabId === "quizzes" || Boolean(item.subject)) {
+      openQuiz([item]);
+    } else {
+      openViewer(item);
+    }
+  }
+
+  function handleOpenExplorerFile(item: FileItem) {
+    const contextParts = [TAB_LABELS[activeTabId], ...explorerPath.slice(0, 2).map((p) => p.name)];
+    openAndTrackItem(item, activeTabId, contextParts.join(" · "));
+  }
+
+  function handleOpenContinueEntry(entry: RecentHistoryEntry) {
+    if (entry.quizItems && entry.quizItems.length > 0) {
+      const subject = entry.item.subject || entry.quizItems[0]?.subject || "Quiz";
+      const contextLabel = entry.contextLabel ?? `${TAB_LABELS.quizzes} · ${subject}`;
+      setContinueHistory((prev) => pushRecentQuizBundle(prev, entry.quizItems!, subject, contextLabel));
+      openQuiz(entry.quizItems);
+      return;
+    }
+
+    openAndTrackItem(
+      entry.item,
+      entry.tabId ?? (entry.item.subject ? "quizzes" : activeTabId),
+      entry.contextLabel ?? TAB_LABELS[activeTabId],
+    );
+  }
+
+  function handleRemoveContinueEntry(id: string) {
+    setContinueHistory((prev) => {
+      const next = prev.filter((entry) => entry.item.id !== id);
+      saveRecentHistory(next);
+      return next;
+    });
+  }
+
+  function handleClearContinueHistory() {
+    setContinueHistory([]);
+    saveRecentHistory([]);
+  }
 
   function handleSelectTab(tabId: TabId) {
     setSearchQuery("");
@@ -114,16 +205,18 @@ function AppShell() {
 
   function handleAttemptSelectedQuizzes() {
     const selected = currentItems.filter((item) => item.type === "file" && selectedQuizIds.has(item.id));
-    if (selected.length > 0) openQuiz(selected);
+    if (selected.length > 0) {
+      const subject = selected[0]?.subject || explorerPath[0]?.name || "Quiz";
+      const contextParts = [TAB_LABELS.quizzes, ...explorerPath.slice(0, 2).map((p) => p.name)];
+      setContinueHistory((prev) => pushRecentQuizBundle(prev, selected, subject, contextParts.join(" · ")));
+      openQuiz(selected);
+    }
   }
 
   function handleSelectSearchResult(entry: SearchEntry) {
     if (entry.item.type === "file") {
-      if (entry.tabId === "quizzes") {
-        openQuiz([entry.item]);
-      } else {
-        openViewer(entry.item);
-      }
+      const contextLabel = entry.breadcrumb.slice(0, 3).join(" · ");
+      openAndTrackItem(entry.item, entry.tabId, contextLabel);
       return;
     }
     setSearchQuery("");
@@ -136,16 +229,20 @@ function AppShell() {
   const activeCardId = explorerPath[0]?.id ?? null;
   const currentItems = explorerPath.length === 0 ? tabRootItems : explorerPath[explorerPath.length - 1].children ?? [];
 
-  const totalResources = useMemo(() => {
-    return (Object.keys(contentTrees) as TreeTabId[]).reduce((total, tabId) => total + countFiles(contentTrees[tabId]), 0);
+  const nonQuizResourceCount = useMemo(() => {
+    return (Object.keys(contentTrees) as TreeTabId[])
+      .filter((tabId) => tabId !== "quizzes")
+      .reduce((total, tabId) => total + countFiles(contentTrees[tabId]), 0);
   }, [contentTrees]);
 
+  const quizCount = useMemo(() => countFiles(contentTrees.quizzes), [contentTrees]);
+
   const showAboutOnly = activeTabId === "about" && !isSearching;
-  const isQuizTab = activeTabId === "quizzes";
 
   return (
-    <div className="min-h-screen bg-midnight">
-      <Navbar activeTabId={activeTabId} onSelectTab={handleSelectTab} searchQuery={searchQuery} onSearchQueryChange={setSearchQuery} />
+    <div className="relative isolate min-h-screen bg-midnight">
+      <ConstellationBackground paused={activeModal !== null} />
+      <Navbar activeTabId={activeTabId} onSelectTab={handleSelectTab} searchQuery={searchQuery} onFocusSearch={handleFocusSearch} />
       <MobileTabDrawer activeTabId={activeTabId} onSelectTab={handleSelectTab} />
       <ContentsBar variant="sidebar" items={contentsBarItems} activeId={activeCardId} onSelect={handleSelectCard} />
 
@@ -170,12 +267,32 @@ function AppShell() {
               <AboutPanel />
             ) : (
               <>
-                <Hero resourceCount={totalResources} />
-                <ClassSelector />
+                <Hero
+                  resourceCount={isQuizTab ? quizCount : nonQuizResourceCount}
+                  searchQuery={searchQuery}
+                  onSearchQueryChange={setSearchQuery}
+                  resultCount={isSearching ? searchResults.length : undefined}
+                  inputRef={heroSearchRef}
+                  isQuizTab={isQuizTab}
+                />
                 <ContentsBar variant="inline" items={contentsBarItems} activeId={activeCardId} onSelect={handleSelectCard} />
 
+                {!isSearching && (
+                  <ContinueSection
+                    entries={continueHistory}
+                    onOpenEntry={handleOpenContinueEntry}
+                    onRemoveEntry={handleRemoveContinueEntry}
+                    onClearAll={handleClearContinueHistory}
+                  />
+                )}
+
                 {isSearching ? (
-                  <SearchResultsView query={searchQuery} results={searchResults} onSelect={handleSelectSearchResult} />
+                  <SearchResultsView
+                    query={searchQuery}
+                    results={searchResults}
+                    onSelect={handleSelectSearchResult}
+                    isQuizSearch={isQuizTab}
+                  />
                 ) : (
                   <FileExplorer
                     rootItems={tabRootItems}
@@ -183,7 +300,7 @@ function AppShell() {
                     path={explorerPath}
                     onOpenFolder={handleOpenFolder}
                     onGoToCrumb={handleGoToCrumb}
-                    onOpenFile={openViewer}
+                    onOpenFile={handleOpenExplorerFile}
                     selectionMode={isQuizTab}
                     selectedIds={selectedQuizIds}
                     onToggleSelect={handleToggleQuizSelect}

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Menu, Search, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Menu, Search, Sparkles, X } from "lucide-react";
 import { useUI } from "../../context/UIContext";
 import { TAB_DEFS } from "../../data/tabs";
 import type { TabId } from "../../data/tabs";
@@ -8,36 +8,109 @@ interface NavbarProps {
   activeTabId: TabId;
   onSelectTab: (tabId: TabId) => void;
   searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
+  onFocusSearch: () => void;
 }
 
-export default function Navbar({ activeTabId, onSelectTab, searchQuery, onSearchQueryChange }: NavbarProps) {
+interface IndicatorMetrics {
+  left: number;
+  width: number;
+  height: number;
+  visible: boolean;
+}
+
+export default function Navbar({ activeTabId, onSelectTab, searchQuery, onFocusSearch }: NavbarProps) {
   const { toggleSidebar } = useUI();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasQuery = searchQuery.trim().length > 0;
+
+  // Shows on every refresh/revisit; hides once the user taps the 3-line menu button
+  const [showMenuHint, setShowMenuHint] = useState(true);
+
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const tabButtonRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
+  const hasMountedRef = useRef(false);
+
+  const [indicator, setIndicator] = useState<IndicatorMetrics>({
+    left: 0,
+    width: 0,
+    height: 0,
+    visible: false,
+  });
+  const [animateIndicator, setAnimateIndicator] = useState(false);
+
+  const handleMenuClick = () => {
+    setShowMenuHint(false);
+    toggleSidebar();
+  };
+
+  const measureActiveTab = useCallback(() => {
+    const activeEl = tabButtonRefs.current[activeTabId];
+    if (!activeEl) return;
+
+    setIndicator({
+      left: activeEl.offsetLeft,
+      width: activeEl.offsetWidth,
+      height: activeEl.offsetHeight,
+      visible: true,
+    });
+
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      requestAnimationFrame(() => setAnimateIndicator(true));
+    }
+  }, [activeTabId]);
+
+  useLayoutEffect(() => {
+    measureActiveTab();
+    const activeEl = tabButtonRefs.current[activeTabId];
+    activeEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [activeTabId, measureActiveTab]);
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    window.addEventListener("resize", measureActiveTab);
+    document.fonts?.ready.then(measureActiveTab).catch(() => {});
+    return () => window.removeEventListener("resize", measureActiveTab);
+  }, [measureActiveTab]);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-midnight/80 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-3">
           <button
             type="button"
-            onClick={toggleSidebar}
+            onClick={handleMenuClick}
             className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-surface-hover hover:text-slate-100 md:hidden"
             aria-label="Toggle menu"
           >
             <Menu className="h-5 w-5" />
           </button>
+
+          {/* Mobile-only callout pointing to the 3-line menu button */}
+          {showMenuHint && (
+            <div
+              role="status"
+              onClick={handleMenuClick}
+              className="absolute left-0 top-full z-50 mt-2.5 flex w-max max-w-[230px] cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-gradient-to-r from-accent-indigo to-accent-violet px-3 py-2 text-xs font-medium text-white shadow-glow-indigo md:hidden"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute -top-2 left-[10px] h-4 w-4 rotate-45 border-l border-t border-white/15 bg-accent-indigo"
+              />
+              <span className="relative z-10 leading-snug">
+                Tap here to switch between tabs
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenuHint(false);
+                }}
+                className="relative z-10 -mr-1 rounded-md p-0.5 text-white/75 transition-colors hover:bg-white/15 hover:text-white"
+                aria-label="Dismiss tip"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-indigo to-accent-violet shadow-glow-indigo">
@@ -50,41 +123,58 @@ export default function Navbar({ activeTabId, onSelectTab, searchQuery, onSearch
           </div>
         </div>
 
-        {/* Always-visible, focusable quick search — clicking or Ctrl/Cmd+K focuses it directly */}
-        <div
-          onClick={() => searchInputRef.current?.focus()}
-          className="flex w-40 shrink-0 cursor-text items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-slate-400 transition-colors focus-within:border-accent-indigo/40 hover:border-border-strong sm:w-56"
+        {/* Compact shortcut pill that jumps to and focuses the hero search bar */}
+        <button
+          type="button"
+          onClick={onFocusSearch}
+          className="flex max-w-[11rem] shrink-0 items-center gap-2 rounded-lg border border-border bg-surface/80 px-3 py-1.5 text-xs text-slate-400 transition-colors hover:border-border-strong hover:bg-surface hover:text-slate-200 sm:max-w-[14rem]"
+          title="Focus search (Ctrl+K or /)"
         >
-          <Search className="h-4 w-4 shrink-0" />
-          <input
-            ref={searchInputRef}
-            value={searchQuery}
-            onChange={(e) => onSearchQueryChange(e.target.value)}
-            placeholder="Quick search"
-            className="w-full min-w-0 bg-transparent text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none"
-          />
+          <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="truncate">{hasQuery ? searchQuery : "Search…"}</span>
           <kbd className="hidden shrink-0 rounded border border-border-strong bg-midnight px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">
             Ctrl K
           </kbd>
-        </div>
+        </button>
       </div>
 
       {/* Desktop tab row — on mobile the same tabs live in the hamburger drawer instead */}
-      <div className="hidden border-t border-border md:flex md:h-11 md:items-center md:gap-1 md:overflow-x-auto md:px-6">
-        {TAB_DEFS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onSelectTab(tab.id)}
-            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              tab.id === activeTabId
-                ? "bg-gradient-to-r from-accent-indigo to-accent-violet text-white shadow-glow-indigo"
-                : "text-slate-400 hover:bg-surface-hover hover:text-slate-200"
+      <div
+        ref={tabListRef}
+        className="relative hidden border-t border-border md:flex md:h-11 md:items-center md:gap-1 md:overflow-x-auto md:px-6"
+      >
+        {indicator.visible && (
+          <span
+            aria-hidden="true"
+            style={{
+              width: `${indicator.width}px`,
+              height: `${indicator.height}px`,
+              transform: `translate3d(${indicator.left}px, -50%, 0)`,
+            }}
+            className={`pointer-events-none absolute left-0 top-1/2 z-0 rounded-md bg-gradient-to-r from-accent-indigo to-accent-violet shadow-glow-indigo ${
+              animateIndicator ? "transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" : ""
             }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+          />
+        )}
+
+        {TAB_DEFS.map((tab) => {
+          const isActive = tab.id === activeTabId;
+          return (
+            <button
+              key={tab.id}
+              ref={(el) => {
+                tabButtonRefs.current[tab.id] = el;
+              }}
+              type="button"
+              onClick={() => onSelectTab(tab.id)}
+              className={`relative z-10 shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
+                isActive ? "text-white" : "text-slate-400 hover:bg-surface-hover hover:text-slate-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
     </header>
   );

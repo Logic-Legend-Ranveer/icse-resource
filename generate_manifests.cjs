@@ -1,51 +1,33 @@
 const { google } = require('googleapis');
 const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const url = require('url');
-const open = require('open');
 
 // ── CONFIG ──────────────────────────────────────────────────────
-const RESOURCES_FOLDER_NAME = 'icse-resources-files';
-const QUIZZES_FOLDER_NAME = 'quizzes';
 const PARENT_FOLDER_NAME = 'icse-resources-webpage';  
-const CREDENTIALS_FILE = 'credentials.json';
-const TOKEN_FILE = 'token.json';
+const MIDDLE_FOLDER_NAME = 'icse-resources-files';
+const QUIZZES_FOLDER_NAME = 'quizzes';
+
+// Top-level folders expected from Account 1
+const TARGET_FOLDERS = [
+  'Study Assets',
+  'ICSE 2027 Syllabus',
+  'Official CISCE Resources',
+  'ICSE Book Solutions'
+];
+
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 // ────────────────────────────────────────────────────────────────
 
-async function authenticate() {
-  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_FILE));
-  const clientConfig = credentials.installed || credentials.web;
-  const { client_secret, client_id, redirect_uris } = clientConfig;
-  const oauth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:3000');
-
-  if (fs.existsSync(TOKEN_FILE)) {
-    const token = JSON.parse(fs.readFileSync(TOKEN_FILE));
-    oauth2Client.setCredentials(token);
-    return oauth2Client;
+async function createAuthClient(credFile, tokenFile) {
+  if (!fs.existsSync(credFile) || !fs.existsSync(tokenFile)) {
+    return null; 
   }
-
-  const authUrl = oauth2Client.generateAuthUrl({ access_type: 'offline', scope: SCOPES });
-  console.log('\n🌐 Opening browser for Google login...');
+  const credentials = JSON.parse(fs.readFileSync(credFile));
+  const clientConfig = credentials.installed || credentials.web;
+  const { client_secret, client_id } = clientConfig;
   
-  const code = await new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
-      const qs = url.parse(req.url, true).query;
-      res.end('<h2>✅ Done! You can close this tab and go back to the terminal.</h2>');
-      server.close();
-      resolve(qs.code);
-    });
-    server.listen(3000);
-    try { open(authUrl); } catch {
-      console.log('Could not open browser automatically. Open this URL manually:\n', authUrl);
-    }
-  });
-
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens));
-  console.log('✅ Logged in and token saved.\n');
+  const oauth2Client = new google.auth.OAuth2(client_id, client_secret, 'http://localhost:3000');
+  const token = JSON.parse(fs.readFileSync(tokenFile));
+  oauth2Client.setCredentials(token);
   return oauth2Client;
 }
 
@@ -54,7 +36,7 @@ async function getFolderId(drive, name, parentId = null) {
   if (parentId) query += ` and '${parentId}' in parents`;
   const res = await drive.files.list({ q: query, fields: 'files(id, name)', pageSize: 10 });
   const files = res.data.files;
-  if (!files.length) throw new Error(`Folder '${name}' not found in Drive.`);
+  if (!files.length) return null;
   return files[0].id;
 }
 
@@ -65,7 +47,6 @@ async function scanFolder(drive, folderId, folderPath = '') {
   do {
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed=false`,
-      // Added createdTime to fields
       fields: 'nextPageToken, files(id, name, mimeType, size, createdTime)',
       pageSize: 100,
       orderBy: 'name',
@@ -79,8 +60,6 @@ async function scanFolder(drive, folderId, folderPath = '') {
       if (isDir) {
         console.log(`  📁 ${itemPath}`);
         const children = await scanFolder(drive, f.id, itemPath);
-        
-        // Sum up the size of all children for the folder's total size
         const folderSize = children.reduce((acc, child) => acc + (child.size || 0), 0);
         
         items.push({
@@ -97,21 +76,74 @@ async function scanFolder(drive, folderId, folderPath = '') {
           type: 'file',
           fileId: f.id,
           size: parseInt(f.size || '0', 10),
-          // Added addedAt date formatted as YYYY-MM-DD
           addedAt: f.createdTime ? f.createdTime.split('T')[0] : ''
         });
       }
     }
-
     pageToken = res.data.nextPageToken;
   } while (pageToken);
 
   return items;
 }
 
+// Scans Account 2 root and packages it into the top-level "PYQ Prelims" folder structure
+async function scanAccount2RootAsPrelims(drive) {
+  console.log(`🚀 Scanning root folders/files of Account 2 for PYQ Prelims...`);
+  
+  const items = [];
+  let pageToken = null;
+
+  do {
+    const res = await drive.files.list({
+      q: `'root' in parents and trashed=false`,
+      fields: 'nextPageToken, files(id, name, mimeType, size, createdTime)',
+      pageSize: 100,
+      orderBy: 'name',
+      ...(pageToken ? { pageToken } : {})
+    });
+
+    for (const f of res.data.files) {
+      const isDir = f.mimeType === 'application/vnd.google-apps.folder';
+
+      if (isDir) {
+        console.log(`  📁 Root Subject Folder (Acc 2): ${f.name}`);
+        const children = await scanFolder(drive, f.id, `/${f.name}`);
+        const folderSize = children.reduce((acc, child) => acc + (child.size || 0), 0);
+        
+        items.push({
+          name: f.name,
+          type: 'folder',
+          fileId: '',
+          size: folderSize,
+          children: children
+        });
+      } else {
+        console.log(`  📄 Root File (Acc 2): ${f.name}`);
+        items.push({
+          name: f.name,
+          type: 'file',
+          fileId: f.id,
+          size: parseInt(f.size || '0', 10),
+          addedAt: f.createdTime ? f.createdTime.split('T')[0] : ''
+        });
+      }
+    }
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
+
+  const totalPrelimsSize = items.reduce((acc, child) => acc + (child.size || 0), 0);
+
+  return {
+    name: "PYQ Prelims",
+    type: "folder",
+    fileId: "",
+    size: totalPrelimsSize,
+    children: items
+  };
+}
+
 async function scanQuizzes(drive, quizzesFolderId) {
   const quizzes = [];
-
   const res = await drive.files.list({
     q: `'${quizzesFolderId}' in parents and trashed=false`,
     fields: 'files(id, name, mimeType)',
@@ -120,8 +152,6 @@ async function scanQuizzes(drive, quizzesFolderId) {
 
   for (const subjectFolder of res.data.files) {
     if (subjectFolder.mimeType !== 'application/vnd.google-apps.folder') continue;
-    console.log(`  📁 Quiz subject: ${subjectFolder.name}`);
-
     const subRes = await drive.files.list({
       q: `'${subjectFolder.id}' in parents and trashed=false`,
       fields: 'files(id, name, mimeType)',
@@ -130,7 +160,6 @@ async function scanQuizzes(drive, quizzesFolderId) {
 
     for (const qfile of subRes.data.files) {
       if (qfile.mimeType === 'application/vnd.google-apps.folder') continue;
-      console.log(`    📄 ${subjectFolder.name}/${qfile.name}`);
       const slug = qfile.name.replace('.txt', '').toLowerCase().replace(/\s+/g, '-');
       quizzes.push({
         id: `${subjectFolder.name.toLowerCase()}-${slug}`,
@@ -140,7 +169,6 @@ async function scanQuizzes(drive, quizzesFolderId) {
       });
     }
   }
-
   return quizzes;
 }
 
@@ -154,25 +182,66 @@ function collectAllIds(nodes) {
 }
 
 async function main() {
-  console.log('🔐 Authenticating with Google Drive...');
-  const auth = await authenticate();
-  const drive = google.drive({ version: 'v3', auth });
-  console.log('✅ Authenticated.\n');
+  // ── 1. Process Account 1 ────────────────────────────────────────
+  const auth1 = await createAuthClient('credentials.json', 'token.json');
+  if (!auth1) throw new Error('Account 1 credentials/token missing!');
+  
+  console.log('🔐 Authenticated with Account 1...');
+  const drive1 = google.drive({ version: 'v3', auth: auth1 });
 
   console.log(`🔍 Finding '${PARENT_FOLDER_NAME}' folder...`);
-  const parentId = await getFolderId(drive, PARENT_FOLDER_NAME);
+  const parentId1 = await getFolderId(drive1, PARENT_FOLDER_NAME);
+  if (!parentId1) throw new Error(`Could not find '${PARENT_FOLDER_NAME}'`);
 
-  console.log(`🔍 Finding '${RESOURCES_FOLDER_NAME}' folder...`);
-  const resourcesId = await getFolderId(drive, RESOURCES_FOLDER_NAME, parentId);
+  console.log(`🔍 Finding '${MIDDLE_FOLDER_NAME}' folder...`);
+  const middleFolderId = await getFolderId(drive1, MIDDLE_FOLDER_NAME, parentId1);
+  if (!middleFolderId) throw new Error(`Could not find '${MIDDLE_FOLDER_NAME}' inside '${PARENT_FOLDER_NAME}'`);
+  
+  console.log(`🔍 Finding 'quizzes' folder...`);
+  const quizzesId1 = await getFolderId(drive1, QUIZZES_FOLDER_NAME, parentId1);
 
-  console.log(`🔍 Finding '${QUIZZES_FOLDER_NAME}' folder...`);
-  const quizzesId = await getFolderId(drive, QUIZZES_FOLDER_NAME, parentId);
+  let filesManifest = [];
 
-  console.log('\n🚀 Scanning resources...');
-  const filesManifest = await scanFolder(drive, resourcesId);
+  // Loop through and scan all main directories inside icse-resources-files
+  for (const folderName of TARGET_FOLDERS) {
+    console.log(`\n🔍 Finding '${folderName}' inside '${MIDDLE_FOLDER_NAME}'...`);
+    const folderId = await getFolderId(drive1, folderName, middleFolderId);
+    
+    if (folderId) {
+      console.log(`🚀 Scanning contents of '${folderName}' (Account 1)...`);
+      const children = await scanFolder(drive1, folderId, `/${folderName}`);
+      const folderSize = children.reduce((acc, child) => acc + (child.size || 0), 0);
 
-  console.log('\n🚀 Scanning quizzes...');
-  const quizzesManifest = await scanQuizzes(drive, quizzesId);
+      filesManifest.push({
+        name: folderName,
+        type: 'folder',
+        fileId: '',
+        size: folderSize,
+        children: children
+      });
+    } else {
+      console.log(`⚠️ Warning: Folder '${folderName}' not found in Drive. Skipping.`);
+    }
+  }
+
+  console.log('\n🚀 Scanning quizzes (Account 1)...');
+  const quizzesManifest = quizzesId1 ? await scanQuizzes(drive1, quizzesId1) : [];
+
+  // ── 2. Process Account 2 and Append "PYQ Prelims" at Root Level ──
+  const auth2 = await createAuthClient('credentials2.json', 'token2.json');
+  if (auth2) {
+    console.log('\n🔐 Authenticated with Account 2...');
+    const drive2 = google.drive({ version: 'v3', auth: auth2 });
+    
+    // Scan Account 2 root and bundle into PYQ Prelims structure
+    const pyqPrelimsFolder = await scanAccount2RootAsPrelims(drive2);
+    
+    // Push PYQ Prelims directly into the root of filesManifest (beside Study Assets)
+    filesManifest.push(pyqPrelimsFolder);
+    console.log(`✅ Successfully added 'PYQ Prelims' as a top-level root folder in files.json.`);
+  } else {
+    console.log('\nℹ️ Account 2 not configured yet. Skipping prelim papers append.');
+  }
 
   const allIds = collectAllIds(filesManifest);
   allIds.push(...quizzesManifest.map(q => q.fileId));
@@ -182,10 +251,8 @@ async function main() {
   fs.writeFileSync('public/quizzes.json', JSON.stringify(quizzesManifest, null, 2));
   fs.writeFileSync('known_ids.json', JSON.stringify(allIds, null, 2));
 
-  console.log('\n✅ Done!');
-  console.log('   public/files.json    ← commit this');
-  console.log('   public/quizzes.json  ← commit this');
-  console.log('   known_ids.json       ← paste into Cloudflare Worker env var');
+  console.log('\n✅ Manifest generation complete!');
+  console.log('   public/files.json    ← PYQ Prelims is now a top-level folder sitting right beside Study Assets!');
 }
 
 main().catch((err) => {

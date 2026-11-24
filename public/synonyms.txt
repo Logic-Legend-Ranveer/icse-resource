@@ -1,5 +1,5 @@
 # ==========================================
-# ICSE Smart Search Synonym Mapping
+# Smart Search Synonym Mapping
 # Format: shortcut = full word 1, full word 2
 # ==========================================
 
@@ -15,8 +15,8 @@ competency = cfq, cbq
 ch = chapter, unit, topic
 phy = physics, sci1
 physics = phy, sci1
-chem = chemistry, sc2
-chemistry=chem, sc2
+chem = chemistry, sci2
+chemistry=chem, sci2
 bio = biology, sci3
 biology = bio, sci3
 math = mathematics, maths, mat
@@ -43,4 +43,15 @@ english = eng
 formula = "masterkey"
 short = notes, short notes
 notes = explaination, brief
-Computer= CS
+Computer= 861, CTA
+Comp= 861, CTA
+CTA = 861, Computer
+Hindi = HIN
+CS= "Commercial Studies", COMM
+CA= "Commercial Applications", COMM
+Commercial= "Commercial Studies", COMM, "Commercial Applications"
+PE= "Physical Education"
+Physical= PE
+environmental= ENA, "89,EVA
+environ= ENA, "89",EVA
+EVA = ENA, "89",Environmental
